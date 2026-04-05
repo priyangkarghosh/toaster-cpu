@@ -1,4 +1,4 @@
-module memory #(
+module memory # (
     parameter MEM_FILE = "",
     parameter WORD_LENGTH = 32,
     parameter CAPACITY = 512
@@ -6,7 +6,7 @@ module memory #(
     input clk,
 
     // read-only instruction port
-    input  [WORD_LENGTH-1:0] instAddr,
+    input [WORD_LENGTH-1:0] instAddr,
     output [WORD_LENGTH-1:0] instOut,
 
     // read-write data port
