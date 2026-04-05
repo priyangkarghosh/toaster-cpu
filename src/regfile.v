@@ -21,29 +21,15 @@ module regfile # (
     // calculate # of registers from addr bits
     localparam REG_COUNT = 1 << RF_ADDR_BITS;
 
-    // instantiate 2^ADDR_BITS 32-bit registers
-    // -> need a wire for each data out and enable signal
-    wire [REG_COUNT-1:0] reg_enable;
-    wire [WORD_LENGTH-1:0] reg_out[REG_COUNT-1:0];
-
-    // instantiate each register
-    genvar j;
-	generate
-		for (j = 0; j < REG_COUNT; j = j + 1) begin : regs
-            register # (.WORD_LENGTH(WORD_LENGTH)) inst_reg (
-                .clk(clk),
-                .enable(reg_enable[j]),
-                .reset(reset),
-                .D(rf_in),
-                .Q(reg_out[j])
-            );
-		end
-	endgenerate
+    // create registers
+    integer i;
+    reg [WORD_LENGTH-1:0] regs [REG_COUNT-1:0];
+    always @(posedge clk) begin
+        if (reset) for (i = 0; i < REG_COUNT; i = i + 1) regs[i] <= 0;        
+        else if (rf_enable && rf_addrW != 0) regs[rf_addrW] <= rf_in;
+    end
 
     // read logic decoding
-    assign rf_outA = (rf_addrA == 0) ? 0 : reg_out[rf_addrA];
-    assign rf_outB = (rf_addrB == 0) ? 0 : reg_out[rf_addrB];
-
-    // write logic decoding
-    assign reg_enable = (rf_enable && rf_addrW != 0) ? (1 << rf_addrW) : 0;
+    assign rf_outA = (rf_addrA == 0) ? 0 : regs[rf_addrA];
+    assign rf_outB = (rf_addrB == 0) ? 0 : regs[rf_addrB];
 endmodule
