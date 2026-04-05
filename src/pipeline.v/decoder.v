@@ -1,10 +1,11 @@
 module decoder #(
-    parameter WORD_LENGTH = 32
+    parameter WORD_LENGTH=32,
+    parameter RF_ADDR_BITS=5
 )(
     input [WORD_LENGTH-1:0] ir,
 
     // register addresses
-    output [4:0] rs1, rs2, rd,
+    output [RF_ADDR_BITS-1:0] rs1, rs2, rd,
 
     // funct modifiers
     output [2:0] funct3,
