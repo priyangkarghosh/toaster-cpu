@@ -38,7 +38,7 @@
 
 set_global_assignment -name FAMILY "Cyclone V"
 set_global_assignment -name DEVICE 5CGXFC7C7F23C8
-set_global_assignment -name TOP_LEVEL_ENTITY "toaster-cpu"
+set_global_assignment -name TOP_LEVEL_ENTITY srt4_divider
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 18.1.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "20:29:35  APRIL 04, 2026"
 set_global_assignment -name LAST_QUARTUS_VERSION "18.1.0 Lite Edition"
@@ -53,3 +53,23 @@ set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
 set_global_assignment -name VERILOG_INPUT_VERSION SYSTEMVERILOG_2005
 set_global_assignment -name VERILOG_SHOW_LMF_MAPPING_MESSAGES OFF
+set_global_assignment -name EDA_TEST_BENCH_ENABLE_STATUS TEST_BENCH_MODE -section_id eda_simulation
+set_global_assignment -name EDA_NATIVELINK_SIMULATION_TEST_BENCH srt4_divider_tb -section_id eda_simulation
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_global_assignment -name EDA_TEST_BENCH_NAME srt4_divider_tb -section_id eda_simulation
+set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id srt4_divider_tb
+set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME srt4_divider_tb -section_id srt4_divider_tb
+set_global_assignment -name SYSTEMVERILOG_FILE testbenches/srt4_divider_tb.sv
+set_global_assignment -name SYSTEMVERILOG_FILE src/alu/divider/srt4_divider.sv
+set_global_assignment -name SYSTEMVERILOG_FILE src/alu/divider/qsel.sv
+set_global_assignment -name SYSTEMVERILOG_FILE src/alu/csadd.sv
+set_global_assignment -name SYSTEMVERILOG_FILE src/alu/alu.sv
+set_global_assignment -name SYSTEMVERILOG_FILE src/pipeline/tx_fetch.sv
+set_global_assignment -name SYSTEMVERILOG_FILE src/pipeline/tx_decode.sv
+set_global_assignment -name SYSTEMVERILOG_FILE src/pipeline/decoder.sv
+set_global_assignment -name SYSTEMVERILOG_FILE src/regfile.sv
+set_global_assignment -name SYSTEMVERILOG_FILE src/memory.sv
+set_global_assignment -name EDA_TEST_BENCH_FILE testbenches/srt4_divider_tb.sv -section_id srt4_divider_tb

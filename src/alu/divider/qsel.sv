@@ -278,6 +278,7 @@ module qsel (
             {4'hf, 5'h14}: q = 2'b10;
             // 15 21: 2
             {4'hf, 5'h15}: q = 2'b10;
+            // default
             default:       q = 2'b00;
         endcase
     end
