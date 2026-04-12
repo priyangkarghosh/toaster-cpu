@@ -1,5 +1,5 @@
 module regfile # (
-    parameter WORD_LENGTH=32,
+    parameter W=32,
     parameter RF_ADDR_BITS=5
 )(
     // base parameters
@@ -12,18 +12,18 @@ module regfile # (
     // write properties
     input rf_enable,
     input [RF_ADDR_BITS-1:0] rf_addrW,
-    input [WORD_LENGTH-1:0] rf_in,
+    input [W-1:0] rf_in,
 
     // outputs
-    output [WORD_LENGTH-1:0] rf_outA,
-    output [WORD_LENGTH-1:0] rf_outB
+    output [W-1:0] rf_outA,
+    output [W-1:0] rf_outB
 );
     // calculate # of registers from addr bits
     localparam REG_COUNT = 1 << RF_ADDR_BITS;
 
     // create registers
     integer i;
-    reg [WORD_LENGTH-1:0] regs [REG_COUNT-1:0];
+    reg [W-1:0] regs [REG_COUNT-1:0];
     always @(posedge clk) begin
         if (reset) for (i = 0; i < REG_COUNT; i = i + 1) regs[i] <= 0;        
         else if (rf_enable && rf_addrW != 0) regs[rf_addrW] <= rf_in;

@@ -1,14 +1,13 @@
 module srt4_divider # (
-    parameter WORD_LENGTH = 32
+    parameter W = 32
 )(
     input logic clk, reset, start, signed_in,
-    input logic [WORD_LENGTH-1:0] x, y,
-    output logic [WORD_LENGTH-1:0] q, r,
+    input logic [W-1:0] x, y,
+    output logic [W-1:0] q, r,
     output logic busy, done, div_zero
 );
-    localparam W = WORD_LENGTH;
-    localparam W2 = WORD_LENGTH * 2;
-    localparam WL2 = $clog2(WORD_LENGTH);
+    localparam W2 = W * 2;
+    localparam WL2 = $clog2(W);
 
     wire [W-1:0] x_eff = (x[W-1] & signed_in) ? -x : x;
     wire [W-1:0] y_eff = (y[W-1] & signed_in) ? -y : y;

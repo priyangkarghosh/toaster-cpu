@@ -1,8 +1,8 @@
 module decoder #(
-    parameter WORD_LENGTH=32,
+    parameter W=32,
     parameter RF_ADDR_BITS=5
 )(
-    input [WORD_LENGTH-1:0] ir,
+    input [W-1:0] ir,
 
     // register addresses
     output [RF_ADDR_BITS-1:0] rs1, rs2, rd,

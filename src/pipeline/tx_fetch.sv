@@ -1,15 +1,15 @@
 module tx_fetch # (
-    parameter WORD_LENGTH=32,
+    parameter W=32,
     parameter RF_ADDR_BITS=5
 )(
     input clk, reset, stall, flush,
 
-    input [WORD_LENGTH-1:0] pc_in,
-    input [WORD_LENGTH-1:0] inst_in,
+    input [W-1:0] pc_in,
+    input [W-1:0] inst_in,
 
     // outputs to id
-    output reg [WORD_LENGTH-1:0] id_ir,
-    output reg [WORD_LENGTH-1:0] id_pc
+    output reg [W-1:0] id_ir,
+    output reg [W-1:0] id_pc
 );
     // latch stage registers
     always @(posedge clk) begin
