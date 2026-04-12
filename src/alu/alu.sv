@@ -18,15 +18,15 @@ module alu # (
     // alu thing
     always_comb begin
         case (select)
-            ADD:  Z = alt ? A - B : A + B;
-            SLL:  Z = A << shift;
-            SLT:  Z = W'($signed(A) < $signed(B));
-            SLTU: Z = W'(A < B);
-            XOR:  Z = A ^ B;
-            SRL:  Z = alt ? W'($signed(A) >>> shift)  : A >> shift;
-            OR:   Z = A | B;
-            AND:  Z = A & B;
-            default: Z = '0;
+            ALU_ADD:  Z = alt ? A - B : A + B;
+            ALU_SLL:  Z = A << shift;
+            ALU_SLT:  Z = W'($signed(A) < $signed(B));
+            ALU_SLTU: Z = W'(A < B);
+            ALU_XOR:  Z = A ^ B;
+            ALU_SRL:  Z = alt ? W'($signed(A) >>> shift)  : A >> shift;
+            ALU_OR:   Z = A | B;
+            ALU_AND:  Z = A & B;
+            default:  Z = '0;
         endcase
     end
 endmodule
