@@ -96,7 +96,7 @@ module srt4_divider # (
                     end
 
                     else if (y_eff == 1) begin
-                        rxq <= negate_q ? (W2+3)'(-x_eff) : (W2+3)'(x_eff);
+                        rxq <= negate_q ? (W)'(-x_eff) : (W)'(x_eff);
                         state <= DONE;
                     end
 
@@ -195,7 +195,6 @@ module srt4_divider # (
                             end
                         endcase
 
-                        state <= RUN;
                         counter <= counter + 1;
                     end
                 end
@@ -203,7 +202,6 @@ module srt4_divider # (
                 DONE: begin
                     busy <= 0;
                     done <= 1;
-                    state <= DONE;
                 end
             endcase
         end
