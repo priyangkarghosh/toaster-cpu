@@ -15,7 +15,7 @@ module tx_fetch # (
     always @(posedge clk) begin
         if (reset | flush) begin
             id_pc <= 0;
-            id_ir <= 32'h00000013; // nop instruction
+            id_ir <= 32'b0110011; // nop instruction
         end 
 
         else if (!stall) begin
