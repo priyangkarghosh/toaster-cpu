@@ -16,7 +16,7 @@ module regfile # (
 
     // outputs
     output [W-1:0] rf_rr1,
-    output [W-1:0] rf_rr1
+    output [W-1:0] rf_rr2
 );
     // calculate # of registers from addr bits
     localparam REG_COUNT = 1 << RF_ADDR_BITS;
@@ -24,12 +24,12 @@ module regfile # (
     // create registers
     integer i;
     reg [W-1:0] regs [REG_COUNT-1:0];
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         if (reset) for (i = 0; i < REG_COUNT; i = i + 1) regs[i] <= 0;        
         else if (rf_write && rf_rd != 0) regs[rf_rd] <= rf_in;
     end
 
     // read logic decoding
     assign rf_rr1 = (rf_rs1 == 0) ? 0 : regs[rf_rs1];
-    assign rf_rr1 = (rf_rs2 == 0) ? 0 : regs[rf_rs2];
+    assign rf_rr2 = (rf_rs2 == 0) ? 0 : regs[rf_rs2];
 endmodule

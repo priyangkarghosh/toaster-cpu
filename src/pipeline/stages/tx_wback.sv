@@ -11,7 +11,7 @@ module tx_wback # (
     // outputs to rf
     output logic [RF_ADDR_BITS-1:0] rf_rd,
     output logic [W-1:0] rf_data,
-    output logic rf_write,
+    output logic rf_write
 );
     assign rf_rd = wb_rd;
     assign rf_data = wb_alu;

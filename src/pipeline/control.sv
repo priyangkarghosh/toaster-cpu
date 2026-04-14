@@ -1,6 +1,6 @@
 import riscv_pkg::*;
 
-module decoder #(
+module control # (
     parameter W=32,
     parameter RF_ADDR_BITS=5
 )(
@@ -18,7 +18,8 @@ module decoder #(
     output logic rf_write
 );
     // opcode
-    opcode_t opcode = opcode_t'(ir[6:0]);
+    opcode_t opcode;
+    assign opcode = opcode_t'(ir[6:0]);
 
     // specifiers
     wire [2:0] funct3 = ir[14:12];
@@ -39,7 +40,6 @@ module decoder #(
     always_comb begin
         imm = '0;
         alu_op = ALU_ADD;
-        alu_alt = 1'b0;
         use_imm = 1'b0;
         rf_write = 1'b0;
 

@@ -1,3 +1,5 @@
+import riscv_pkg::*;
+
 module tx_decode # (
     parameter W=32,
     parameter RF_ADDR_BITS=5
@@ -5,16 +7,16 @@ module tx_decode # (
     input clk, reset, stall, flush,
 
     // from fetch
-    input [REG_BITS-1:0] id_ir,
-    input [REG_BITS-1:0] id_pc,
+    input [W-1:0] id_ir,
+    input [W-1:0] id_pc,
 
     // from regfile
-    input [REG_BITS-1:0] rf_rr1,
-    input [REG_BITS-1:0] rf_rr2,
+    input [W-1:0] rf_rr1,
+    input [W-1:0] rf_rr2,
 
     // to regfile
-    output [REG_ADDR_BITS-1:0] rf_rs1,
-    output [REG_ADDR_BITS-1:0] rf_rs2,
+    output [RF_ADDR_BITS-1:0] rf_rs1,
+    output [RF_ADDR_BITS-1:0] rf_rs2,
 
     // latched outputs
     output logic [W-1:0] ex_pc,
@@ -38,17 +40,17 @@ module tx_decode # (
     logic use_imm;
     logic rf_write;
 
-    // inst decoder
-    decoder (
+    // inst control unit
+    control u_ctl (
         // inputs
         .ir(id_ir),
 
         // outputs
-        .rs1(rs1), .rs2(rs1), .rd(rd),
+        .rs1(rs1), .rs2(rs2), .rd(rd),
         .alu_op(alu_op),
         .use_imm(use_imm),
         .rf_write(rf_write)
-    )
+    );
 
     // assign stuff
     assign rf_rs1 = rs1;

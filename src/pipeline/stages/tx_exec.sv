@@ -1,3 +1,5 @@
+import riscv_pkg::*;
+
 module tx_exec # (
     parameter W=32,
     parameter RF_ADDR_BITS=5
@@ -34,7 +36,7 @@ module tx_exec # (
     );
 
     // latch stage registers
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         if (reset | bubble) begin
             mem_alu <= 0;
             mem_rd <= 0;

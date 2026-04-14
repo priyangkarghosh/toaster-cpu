@@ -12,7 +12,7 @@ module tx_fetch # (
     output reg [W-1:0] id_pc
 );
     // latch stage registers
-    always @(posedge clk) begin
+    always_ff @(posedge clk) begin
         if (reset | flush) begin
             id_pc <= 0;
             id_ir <= 32'b0110011; // nop instruction

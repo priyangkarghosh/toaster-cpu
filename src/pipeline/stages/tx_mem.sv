@@ -13,8 +13,8 @@ module tx_mem # (
     output logic wb_rf_write
 );
     // latch stage registers
-    always @(posedge clk) begin
-        if (reset | bubble) begin
+    always_ff @(posedge clk) begin
+        if (reset) begin
             wb_alu <= 0;
             wb_rd <= 0;
             wb_rf_write <= 0;
