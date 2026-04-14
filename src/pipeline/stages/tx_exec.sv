@@ -1,0 +1,50 @@
+module tx_exec # (
+    parameter W=32,
+    parameter RF_ADDR_BITS=5
+)(
+    input clk, reset, bubble,
+
+    // inputs
+    input logic [W-1:0] ex_pc,
+    input logic [W-1:0] ex_imm,
+
+    input logic [RF_ADDR_BITS-1:0] ex_rs1,
+    input logic [RF_ADDR_BITS-1:0] ex_rs2,
+    input logic [RF_ADDR_BITS-1:0] ex_rd,
+    input logic [W-1:0] ex_rr1,
+    input logic [W-1:0] ex_rr2,
+
+    // control signals
+    input alu_op_t ex_alu_op,
+    input logic ex_use_imm,
+    input logic ex_rf_write,
+
+    // outputs to mem stage
+    output logic [RF_ADDR_BITS-1:0] mem_rd,
+    output logic [W-1:0] mem_alu,
+    output logic mem_rf_write
+);
+    // wire alu
+    wire [W-1:0] alu_out;
+    alu # (.W(W)) inst_alu (
+        .A(ex_rr1),
+        .B(ex_rr2),
+        .select(ex_alu_op),
+        .Z(alu_out)
+    );
+
+    // latch stage registers
+    always @(posedge clk) begin
+        if (reset | bubble) begin
+            mem_alu <= 0;
+            mem_rd <= 0;
+            mem_rf_write <= 0;
+        end 
+
+        else begin
+            mem_rd <= ex_rd;
+            mem_alu <= alu_out;
+            mem_rf_write <= ex_rf_write;
+        end
+    end
+endmodule
