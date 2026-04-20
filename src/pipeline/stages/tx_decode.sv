@@ -46,7 +46,10 @@ module tx_decode # (
         .ir(id_ir),
 
         // outputs
-        .rs1(rs1), .rs2(rs2), .rd(rd),
+        .rs1(rs1), 
+        .rs2(rs2), 
+        .rd(rd), 
+        .imm(imm),
         .alu_op(alu_op),
         .use_imm(use_imm),
         .rf_write(rf_write)

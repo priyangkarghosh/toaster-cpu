@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 
-module tb_datapath;
+module datapath_tb;
     // clock/reset
     logic clk = 0;
     logic reset;
@@ -40,10 +40,11 @@ module tb_datapath;
         for (i = 0; i < 16; i = i + 1)
             $display("r%-2d = 0x%08h = 0b%032b = %0d",
                 i,
-                dut.u_regfile.regs[i],
-                dut.u_regfile.regs[i],
-                $signed(dut.u_regfile.regs[i])
+                dut.u_rf.regs[i],
+                dut.u_rf.regs[i],
+                $signed(dut.u_rf.regs[i])
             );
+        $display("==========");
     endtask
 
     always @(posedge clk) begin

@@ -27,10 +27,11 @@ module tx_exec # (
     output logic mem_rf_write
 );
     // wire alu
+    wire [W-1:0] alu_b = ex_use_imm ? ex_imm : ex_rr2;
     wire [W-1:0] alu_out;
     alu # (.W(W)) inst_alu (
         .A(ex_rr1),
-        .B(ex_rr2),
+        .B(alu_b),
         .select(ex_alu_op),
         .Z(alu_out)
     );
