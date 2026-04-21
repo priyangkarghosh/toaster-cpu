@@ -72,6 +72,23 @@ module datapath #(
     logic [W-1:0] wb_alu;
     logic wb_rf_write;
 
+    // forwarding unit
+    wire [W-1:0] fwd_rr1, fwd_rr2;
+    forward #(.W(W), .RF_ADDR_BITS(RF_ADDR_BITS)) u_fw (
+        .ex_rs1(ex_rs1),
+        .ex_rs2(ex_rs2),
+        .ex_rr1(ex_rr1),
+        .ex_rr2(ex_rr2),
+        .mem_rd(mem_rd),
+        .mem_alu(mem_alu),
+        .mem_rf_write(mem_rf_write),
+        .wb_rd(wb_rd),
+        .wb_alu(wb_alu),
+        .wb_rf_write(wb_rf_write),
+        .fwd_rr1(fwd_rr1),
+        .fwd_rr2(fwd_rr2)
+    );
+
     // instantiate stages
     tx_fetch #(.W(W), .RF_ADDR_BITS(RF_ADDR_BITS)) u_fetch (
         .clk(clk),
@@ -116,8 +133,8 @@ module datapath #(
         .ex_rs1(ex_rs1),
         .ex_rs2(ex_rs2),
         .ex_rd(ex_rd),
-        .ex_rr1(ex_rr1),
-        .ex_rr2(ex_rr2),
+        .fwd_rr1(fwd_rr1),
+        .fwd_rr2(fwd_rr2),
         .ex_alu_op(ex_alu_op),
         .ex_use_imm(ex_use_imm),
         .ex_rf_write(ex_rf_write),

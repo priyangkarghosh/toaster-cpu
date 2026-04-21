@@ -64,6 +64,7 @@ module datapath_tb;
         feed_inst(32'h00500093);
         // addi x2, x0, 3  →  imm=3, rs1=x0, rd=x2
         feed_inst(32'h00300113);
+        //repeat(4) feed_inst(32'b0110011);
         // add  x3, x1, x2 →  rs1=x1, rs2=x2, rd=x3
         feed_inst(32'h002080B3);
         // nops to flush pipeline
