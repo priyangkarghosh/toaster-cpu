@@ -66,7 +66,6 @@ set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_RO
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name EDA_TEST_BENCH_FILE testbenches/srt4_divider_tb.sv -section_id srt4_divider_tb
 set_global_assignment -name EDA_TEST_BENCH_FILE testbenches/datapath_tb.sv -section_id datapath_tb
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name SYSTEMVERILOG_FILE src/pipeline/forward.sv
 set_global_assignment -name SYSTEMVERILOG_FILE testbenches/srt4_divider_tb.sv
 set_global_assignment -name SYSTEMVERILOG_FILE testbenches/datapath_tb.sv
@@ -84,3 +83,4 @@ set_global_assignment -name SYSTEMVERILOG_FILE src/alu/csadd.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/alu/alu.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/regfile.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/memory.sv
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

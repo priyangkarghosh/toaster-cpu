@@ -16,7 +16,7 @@ module forward # (
     // from mem stage
     input logic [RF_ADDR_BITS-1:0] wb_rd,
     input logic [W-1:0] wb_alu,
-    input logic wb_rf_write
+    input logic wb_rf_write,
 
     // forwarded outputs
     output logic [W-1:0] fwd_rr1,

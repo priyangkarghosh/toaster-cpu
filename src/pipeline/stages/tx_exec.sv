@@ -30,7 +30,7 @@ module tx_exec # (
     wire [W-1:0] alu_b = ex_use_imm ? ex_imm : fwd_rr2;
     wire [W-1:0] alu_out;
     alu # (.W(W)) inst_alu (
-        .A(fwd_rr2),
+        .A(fwd_rr1),
         .B(alu_b),
         .select(ex_alu_op),
         .Z(alu_out)
