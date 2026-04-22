@@ -17,7 +17,9 @@ module control (
     output logic use_imm,
     output logic rf_en,
     output logic load_en,
-    output logic store_en
+    output logic store_en,
+    output logic branch_en,
+    output logic jump_en
 );
     opcode_t opcode;
     logic [2:0] funct3;
@@ -71,6 +73,12 @@ module control (
                 imm = imm_s;
                 use_imm = 1;
                 store_en = 1;
+            end
+
+            OP_BRANCH: begin
+                imm = imm_b;
+                use_imm = 1;
+                branch_en = 1;
             end
 
             default: ;

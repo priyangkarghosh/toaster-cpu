@@ -27,6 +27,7 @@ module tx_decode # (
         .rs2(dec.rs2), 
         .rd(dec.rd), 
         .imm(dec.imm),
+        .mem_width(dec.mem_width),
         .alu_op(dec.alu_op),
         .use_imm(dec.use_imm),
         .rf_en(dec.rf_en),

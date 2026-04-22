@@ -22,6 +22,16 @@ package riscv_pkg;
         MW_HALFU = 3'b101
     } mem_width_t;
 
+    // funct3
+    typedef enum logic [2:0] {
+        BR_BEQ  = 3'h0,
+        BR_BNE  = 3'h1,
+        BR_BLT  = 3'h4,
+        BR_BGE  = 3'h5,
+        BR_BLTU = 3'h6,
+        BR_BGEU = 3'h7
+    } branch_t;
+
     typedef enum logic [6:0] {
         OP_REG    = 7'b0110011,
         OP_IMM    = 7'b0010011,
