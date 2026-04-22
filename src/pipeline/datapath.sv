@@ -11,13 +11,11 @@ module datapath (
     output logic d_write,
     output logic [31:0] d_addr,
     input  logic [31:0] d_rdata,
-    output logic [31:0] d_wdata
+    output logic [31:0] d_wdata,
+    output mem_width_t d_width
 );
     // control wiring
     logic stall, flush, bubble;
-    assign stall = 0;
-    assign flush = 0;
-    assign bubble = 0;
 
     // pc
     logic [31:0] pc;
@@ -49,16 +47,17 @@ module datapath (
     // instruction memory connections
     assign i_addr = pc;
 
-    // data memory connections
-    assign d_write = 1'b0;
-    assign d_addr = '0;
-    assign d_wdata = '0;
-
     // pipeline structs
     if_id_t if_id;
     id_ex_t id_ex;
     ex_ma_t ex_ma;
     ma_wb_t ma_wb;
+
+    // hazard wiring
+    assign load_use = ex_ma.load_en & (id_ex.rs1 == ex_ma.rd || id_ex.rs2 == ex_ma.rd);
+    assign stall = load_use;
+    assign flush = 0;
+    assign bubble = load_use;
 
     // forwarding
     logic [31:0] fwd_rr1, fwd_rr2;
@@ -111,6 +110,11 @@ module datapath (
         .clk(clk), 
         .reset(reset),
         .ex_ma(ex_ma),
+        .d_addr(d_addr),
+        .d_rdata(d_rdata),
+        .d_wdata(d_wdata),
+        .d_width(d_width),
+        .d_write(d_write),
         .ma_wb(ma_wb)
     );
 

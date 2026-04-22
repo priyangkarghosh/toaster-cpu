@@ -16,7 +16,7 @@ module tx_mem (
     // outputs to next stage
     output ma_wb_t ma_wb
 );
-    assign d_addr  = ex_ma.alu;
+    assign d_addr = ex_ma.alu;
     assign d_wdata = ex_ma.rr2;
     assign d_width = ex_ma.mem_width;
     assign d_write = ex_ma.store_en;
