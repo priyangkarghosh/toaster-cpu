@@ -2,15 +2,16 @@ import riscv_pkg::*;
 
 module datapath (
     input clk, reset,
+    
+    // instruction port
+    output logic [31:0] i_addr,
+    input logic [31:0] i_data,
 
-    // memory connections
-    output logic [31:0] mem_pc,
-    input  logic [31:0] mem_inst_in,
-
-    output logic [3:0]  mem_write,
-    output logic [31:0] mem_addr,
-    input  logic [31:0] mem_data_in,
-    output logic [31:0] mem_data_out
+    // data port
+    output logic d_write,
+    output logic [31:0] d_addr,
+    input  logic [31:0] d_rdata,
+    output logic [31:0] d_wdata
 );
     // control wiring
     logic stall, flush, bubble;
@@ -45,11 +46,13 @@ module datapath (
         .rf_rr2(rf_rr2)
     );
 
-    // memory
-    assign mem_pc = pc;
-    assign mem_write = 4'b0;
-    assign mem_addr = '0;
-    assign mem_data_out = '0;
+    // instruction memory connections
+    assign i_addr = pc;
+
+    // data memory connections
+    assign d_write = 1'b0;
+    assign d_addr = '0;
+    assign d_wdata = '0;
 
     // pipeline structs
     if_id_t if_id;
@@ -77,7 +80,7 @@ module datapath (
         .stall(stall), 
         .flush(flush),
         .pc_in(pc), 
-        .inst_in(mem_inst_in),
+        .inst_in(i_data),
         .if_id(if_id)
     );
 

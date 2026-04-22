@@ -11,6 +11,7 @@ module control (
 
     // alu control
     output alu_op_t alu_op,
+    output mem_width_t mem_width,
 
     // output signals
     output logic use_imm,
@@ -25,6 +26,7 @@ module control (
     assign opcode = opcode_t'(ir[6:0]);
     assign funct3 = ir[14:12];
     assign funct7 = ir[31:25];
+    assign mem_width = mem_width_t'(funct3);
 
     assign rs1 = ir[19:15];
     assign rs2 = ir[24:20];

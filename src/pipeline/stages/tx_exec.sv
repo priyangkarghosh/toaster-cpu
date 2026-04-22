@@ -25,6 +25,7 @@ module tx_exec (
         if (reset | bubble) begin
             ex_ma <= '0;
         end 
+        
         else begin
             ex_ma.alu <= alu_out;
             ex_ma.rr2 <= fwd_rr2;
