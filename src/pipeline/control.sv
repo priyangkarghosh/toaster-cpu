@@ -7,7 +7,9 @@ module control # (
     input [W-1:0] ir,
 
     // register addresses
-    output logic [RF_ADDR_BITS-1:0] rs1, rs2, rd,
+    output logic [RF_ADDR_BITS-1:0] rs1,
+    output logic [RF_ADDR_BITS-1:0] rs2,
+    output logic [RF_ADDR_BITS-1:0] rd,
     output logic [W-1:0] imm,
 
     // alu control
@@ -15,7 +17,9 @@ module control # (
 
     // output signals
     output logic use_imm,
-    output logic rf_write
+    output logic rf_en,
+    output logic load_en,
+    output logic store_en
 );
     // opcode
     opcode_t opcode;
@@ -40,20 +44,38 @@ module control # (
     always_comb begin
         imm = '0;
         alu_op = ALU_ADD;
-        use_imm = 1'b0;
-        rf_write = 1'b0;
+        use_imm = 0;
+        rf_en = 0;
+        load_en = 0;
+        store_en = 0;
 
         case (opcode)
             OP_REG: begin
                 alu_op = alu_op_t'({funct7[5], funct3});
-                rf_write = 1;
+                rf_en = 1;
             end
 
             OP_IMM: begin
                 alu_op = alu_op_t'({funct7[5] & (funct3 == ALU_SRL[2:0]), funct3});
                 imm = imm_i;
                 use_imm = 1;
-                rf_write = 1;
+                rf_en = 1;
+            end
+
+            OP_LOAD: begin
+                alu_op = ALU_ADD;
+                imm = imm_i;
+                use_imm = 1;
+                rf_en = 1;
+                load_en = 1;
+            end
+
+            OP_STORE: begin
+                alu_op = ALU_ADD;
+                imm = imm_i;
+                use_imm = 1;
+                rf_en = 1;
+                store_en = 1;
             end
 
             default: ;

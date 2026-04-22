@@ -31,14 +31,14 @@ module tx_decode # (
     // control signals
     output alu_op_t ex_alu_op,
     output logic ex_use_imm,
-    output logic ex_rf_write
+    output logic ex_rf_en
 );
     // declare decoder outputs
     logic [RF_ADDR_BITS-1:0] rs1, rs2, rd;
     logic [W-1:0] imm;
     alu_op_t alu_op;
     logic use_imm;
-    logic rf_write;
+    logic rf_en;
 
     // inst control unit
     control u_ctl (
@@ -52,7 +52,7 @@ module tx_decode # (
         .imm(imm),
         .alu_op(alu_op),
         .use_imm(use_imm),
-        .rf_write(rf_write)
+        .rf_en(rf_en)
     );
 
     // assign stuff
@@ -71,7 +71,7 @@ module tx_decode # (
             ex_rr2 <= '0;
             ex_alu_op <= ALU_ADD;
             ex_use_imm <= '0;
-            ex_rf_write <= '0;
+            ex_rf_en <= '0;
         end 
         
         else if (!stall) begin
@@ -84,7 +84,7 @@ module tx_decode # (
             ex_rr2 <= rf_rr2;
             ex_alu_op <= alu_op;
             ex_use_imm <= use_imm;
-            ex_rf_write <= rf_write;
+            ex_rf_en <= rf_en;
         end
     end
 endmodule

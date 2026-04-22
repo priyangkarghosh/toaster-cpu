@@ -13,6 +13,15 @@ package riscv_pkg;
         ALU_AND  = 4'b0111
     } alu_op_t;
     
+    // funct3
+    typedef enum logic [2:0] {
+        MW_BYTE  = 3'b000,
+        MW_HALF  = 3'b001,
+        MW_WORD  = 3'b010,
+        MW_BYTEU = 3'b100,
+        MW_HALFU = 3'b101
+    } mem_width_t;
+
     typedef enum logic [6:0] {
         OP_REG    = 7'b0110011,
         OP_IMM    = 7'b0010011,

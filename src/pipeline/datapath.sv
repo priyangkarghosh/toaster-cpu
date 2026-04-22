@@ -33,8 +33,11 @@ module datapath #(
     logic rf_write;
     logic [W-1:0] rf_in;
     logic [RF_ADDR_BITS-1:0] rf_rd;
-    logic [RF_ADDR_BITS-1:0] rf_rs1, rf_rs2;
-    logic [W-1:0] rf_rr1, rf_rr2;
+    logic [RF_ADDR_BITS-1:0] rf_rs1;
+    logic [RF_ADDR_BITS-1:0] rf_rs2;
+    logic [W-1:0] rf_rr1;
+    logic [W-1:0] rf_rr2;
+
     regfile #(.W(W), .RF_ADDR_BITS(RF_ADDR_BITS)) u_rf (
         .clk(clk),
         .reset(reset),

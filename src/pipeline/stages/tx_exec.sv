@@ -19,12 +19,12 @@ module tx_exec # (
     // control signals
     input alu_op_t ex_alu_op,
     input logic ex_use_imm,
-    input logic ex_rf_write,
+    input logic ex_rf_en,
 
     // outputs to mem stage
     output logic [RF_ADDR_BITS-1:0] mem_rd,
     output logic [W-1:0] mem_alu,
-    output logic mem_rf_write
+    output logic mem_rf_en
 );
     // wire alu
     wire [W-1:0] alu_b = ex_use_imm ? ex_imm : fwd_rr2;
@@ -41,13 +41,13 @@ module tx_exec # (
         if (reset | bubble) begin
             mem_alu <= 0;
             mem_rd <= 0;
-            mem_rf_write <= 0;
+            mem_rf_en <= 0;
         end 
 
         else begin
             mem_rd <= ex_rd;
             mem_alu <= alu_out;
-            mem_rf_write <= ex_rf_write;
+            mem_rf_en <= ex_rf_en;
         end
     end
 endmodule
