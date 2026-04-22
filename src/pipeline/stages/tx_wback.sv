@@ -1,19 +1,14 @@
-module tx_wback # (
-    parameter W=32,
-    parameter RF_ADDR_BITS=5
-)(
-    input clk, reset,
+import riscv_pkg::*;
 
-    input logic [RF_ADDR_BITS-1:0] wb_rd,
-    input logic [W-1:0] wb_alu,
-    input logic wb_rf_en,
+module tx_wback (
+    input ma_wb_t ma_wb,
 
     // outputs to rf
-    output logic [RF_ADDR_BITS-1:0] rf_rd,
-    output logic [W-1:0] rf_data,
-    output logic rf_en
+    output logic [4:0]  rf_rd,
+    output logic [31:0] rf_data,
+    output logic        rf_en
 );
-    assign rf_rd = wb_rd;
-    assign rf_data = wb_alu;
-    assign rf_en = wb_rf_en;
+    assign rf_rd = ma_wb.rd;
+    assign rf_data = ma_wb.alu;
+    assign rf_en = ma_wb.rf_en;
 endmodule

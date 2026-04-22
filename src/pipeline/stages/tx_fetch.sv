@@ -1,26 +1,22 @@
-module tx_fetch # (
-    parameter W=32,
-    parameter RF_ADDR_BITS=5
-)(
+import riscv_pkg::*;
+
+module tx_fetch (
     input clk, reset, stall, flush,
 
-    input [W-1:0] pc_in,
-    input [W-1:0] inst_in,
-
-    // outputs to id
-    output reg [W-1:0] id_ir,
-    output reg [W-1:0] id_pc
+    input [31:0] pc_in,
+    input [31:0] inst_in,
+    output if_id_t if_id
 );
     // latch stage registers
     always_ff @(posedge clk) begin
         if (reset | flush) begin
-            id_pc <= 0;
-            id_ir <= 32'b0110011; // nop instruction
+            if_id <= 0;
+            if_id.ir <= 32'h13; // nop
         end 
 
         else if (!stall) begin
-            id_pc <= pc_in;
-            id_ir <= inst_in;
+            if_id.pc <= pc_in;
+            if_id.ir <= inst_in;
         end
     end
 endmodule

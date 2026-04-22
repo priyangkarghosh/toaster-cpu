@@ -33,4 +33,37 @@ package riscv_pkg;
         OP_LUI    = 7'b0110111,
         OP_AUIPC  = 7'b0010111
     } opcode_t;
+
+    // if -> id
+    typedef struct packed {
+        logic [31:0] pc, ir;
+    } if_id_t;
+ 
+    // id -> ex
+    typedef struct packed {
+        logic [31:0] pc, imm, rr1, rr2;
+        logic [4:0] rs1, rs2, rd;
+        alu_op_t alu_op;
+
+        logic use_imm;
+        logic rf_en;
+        logic load_en;
+        logic store_en;
+    } id_ex_t;
+ 
+    // ex -> ma
+    typedef struct packed {
+        logic [31:0] alu, rr2;
+        logic [4:0] rd;
+        logic rf_en;
+        logic load_en;
+        logic store_en;
+    } ex_ma_t;
+ 
+    // ma -> wb
+    typedef struct packed {
+        logic [31:0] alu;
+        logic [4:0] rd;
+        logic rf_en;
+    } ma_wb_t;
 endpackage
