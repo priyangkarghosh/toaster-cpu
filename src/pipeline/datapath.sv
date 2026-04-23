@@ -18,9 +18,12 @@ module datapath (
     logic stall, flush, bubble;
 
     // pc
+    logic pc_en;
     logic [31:0] pc;
+    logic [31:0] pc_target;
     always_ff @(posedge clk) begin
         if (reset) pc <= '0;
+        else if (pc_en) pc <= pc_target;
         else if (!stall) pc <= pc + 4;
     end
 
@@ -56,7 +59,7 @@ module datapath (
     // hazard wiring
     assign load_use = ex_ma.load_en & (id_ex.rs1 == ex_ma.rd || id_ex.rs2 == ex_ma.rd);
     assign stall = load_use;
-    assign flush = 0;
+    assign flush = pc_en & !load_use; // CHECK BEHAVIOUR OF BRANCH AFTER LOAD
     assign bubble = load_use;
 
     // forwarding
@@ -91,6 +94,7 @@ module datapath (
         .if_id(if_id),
         .rf_rr1(rf_rr1), 
         .rf_rr2(rf_rr2),
+        .pc_next(pc),
         .rf_rs1(rf_rs1), 
         .rf_rs2(rf_rs2),
         .id_ex(id_ex)
@@ -103,6 +107,8 @@ module datapath (
         .id_ex(id_ex),
         .fwd_rr1(fwd_rr1), 
         .fwd_rr2(fwd_rr2),
+        .pc_target(pc_target),
+        .pc_en(pc_en),
         .ex_ma(ex_ma)
     );
 

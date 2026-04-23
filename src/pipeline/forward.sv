@@ -10,9 +10,9 @@ module forward (
     output logic [31:0] fwd_rr1,
     output logic [31:0] fwd_rr2
 );
-    assign fwd_rr1 = (ex_ma.rf_en && ex_rs1 == ex_ma.rd) ? ex_ma.alu :
+    assign fwd_rr1 = (ex_ma.rf_en && ex_rs1 == ex_ma.rd) ? ex_ma.data :
                      (ma_wb.rf_en && ex_rs1 == ma_wb.rd) ? ma_wb.data : ex_rr1;
 
-    assign fwd_rr2 = (ex_ma.rf_en && ex_rs2 == ex_ma.rd) ? ex_ma.alu :
+    assign fwd_rr2 = (ex_ma.rf_en && ex_rs2 == ex_ma.rd) ? ex_ma.data :
                      (ma_wb.rf_en && ex_rs2 == ma_wb.rd) ? ma_wb.data : ex_rr2;
 endmodule

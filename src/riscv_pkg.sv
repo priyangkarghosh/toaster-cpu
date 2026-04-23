@@ -51,20 +51,24 @@ package riscv_pkg;
  
     // id -> ex
     typedef struct packed {
-        logic [31:0] pc, imm, rr1, rr2;
+        logic [31:0] pc, pc_next, imm, rr1, rr2;
         logic [4:0] rs1, rs2, rd;
         alu_op_t alu_op;
         mem_width_t mem_width;
+        branch_t br_type;
 
         logic use_imm;
         logic rf_en;
         logic load_en;
         logic store_en;
+        logic branch_en;
+        logic jal_en;
+        logic jalr_en;
     } id_ex_t;
  
     // ex -> ma
     typedef struct packed {
-        logic [31:0] alu, rr2;
+        logic [31:0] data, rr2;
         logic [4:0] rd;
         mem_width_t mem_width;
         

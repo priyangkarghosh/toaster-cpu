@@ -1,6 +1,6 @@
 import riscv_pkg::*;
 
-module memory #(
+module memory # (
     parameter MEM_FILE = "",
     parameter W = 32,
     parameter CAPACITY = 512 // in words
@@ -9,14 +9,14 @@ module memory #(
 
     // instruction port
     input [W-1:0] i_addr,
-    output [W-1:0] i_data,
+    output logic [W-1:0] i_data,
 
     // data port
     input logic d_write,
     input mem_width_t d_width,
     input [W-1:0] d_addr,
     input [W-1:0] d_wdata,
-    output [W-1:0] d_rdata
+    output logic [W-1:0] d_rdata
 );
     localparam NUM_BYTES = (W / 8) * CAPACITY;
     reg [7:0] mem [0:NUM_BYTES-1];

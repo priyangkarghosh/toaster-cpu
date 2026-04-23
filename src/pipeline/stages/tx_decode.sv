@@ -1,21 +1,21 @@
 import riscv_pkg::*;
 
-module tx_decode # (
-    parameter W=32,
-    parameter RF_ADDR_BITS=5
-)(
+module tx_decode (
     input clk, reset, stall, flush,
 
     // from fetch
     input if_id_t if_id,
 
     // from regfile
-    input [W-1:0] rf_rr1,
-    input [W-1:0] rf_rr2,
+    input [31:0] rf_rr1,
+    input [31:0] rf_rr2,
+
+    // from pc
+    input [31:0] pc_next,
 
     // to regfile
-    output [RF_ADDR_BITS-1:0] rf_rs1,
-    output [RF_ADDR_BITS-1:0] rf_rs2,
+    output [4:0] rf_rs1,
+    output [4:0] rf_rs2,
 
     // latched output
     output id_ex_t id_ex
@@ -29,6 +29,7 @@ module tx_decode # (
         .imm(dec.imm),
         .mem_width(dec.mem_width),
         .alu_op(dec.alu_op),
+        .br_type(dec.br_type),
         .use_imm(dec.use_imm),
         .rf_en(dec.rf_en),
         .load_en(dec.load_en),
@@ -49,6 +50,7 @@ module tx_decode # (
         else if (!stall) begin
             id_ex <= dec;
             id_ex.pc <= if_id.pc;
+            id_ex.pc_next <= pc_next;
             id_ex.rr1 <= rf_rr1;
             id_ex.rr2 <= rf_rr2;
         end

@@ -12,6 +12,7 @@ module control (
     // alu control
     output alu_op_t alu_op,
     output mem_width_t mem_width,
+    output branch_t br_type,
 
     // output signals
     output logic use_imm,
@@ -19,7 +20,8 @@ module control (
     output logic load_en,
     output logic store_en,
     output logic branch_en,
-    output logic jump_en
+    output logic jal_en,
+    output logic jalr_en
 );
     opcode_t opcode;
     logic [2:0] funct3;
@@ -29,6 +31,7 @@ module control (
     assign funct3 = ir[14:12];
     assign funct7 = ir[31:25];
     assign mem_width = mem_width_t'(funct3);
+    assign br_type = branch_t'(funct3);
 
     assign rs1 = ir[19:15];
     assign rs2 = ir[24:20];
@@ -48,6 +51,9 @@ module control (
         rf_en = 0;
         load_en = 0;
         store_en = 0;
+        branch_en = 0;
+        jal_en = 0;
+        jalr_en = 0;
 
         case (opcode)
             OP_REG: begin
@@ -79,6 +85,20 @@ module control (
                 imm = imm_b;
                 use_imm = 1;
                 branch_en = 1;
+            end
+
+            OP_JAL: begin
+                imm = imm_j;
+                use_imm = 1;
+                rf_en = 1;
+                jal_en = 1;
+            end
+
+            OP_JALR: begin
+                imm = imm_i;
+                use_imm = 1;
+                rf_en = 1;
+                jalr_en = 1;
             end
 
             default: ;
