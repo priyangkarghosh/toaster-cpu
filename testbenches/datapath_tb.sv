@@ -1,109 +1,70 @@
 `timescale 1ns/1ps
+import riscv_pkg::*;
+
 module datapath_tb;
-    // clock/reset
     logic clk = 0;
     logic reset;
-    always #5 clk = ~clk; // 100MHz
+    always #5 clk = ~clk;
 
-    // memory ports
-    logic [31:0] i_addr;
-    logic [31:0] i_data;
+    logic [31:0] i_addr, i_data;
     logic        d_write;
-    logic [31:0] d_addr;
-    logic [31:0] d_rdata = '0;
-    logic [31:0] d_wdata;
+    logic [31:0] d_addr, d_rdata, d_wdata;
+    mem_width_t  d_width;
 
     datapath dut (
-        .clk(clk),
-        .reset(reset),
-        .i_addr(i_addr),
-        .i_data(i_data),
-        .d_write(d_write),
-        .d_addr(d_addr),
-        .d_rdata(d_rdata),
-        .d_wdata(d_wdata)
+        .clk(clk), .reset(reset),
+        .i_addr(i_addr), .i_data(i_data),
+        .d_write(d_write), .d_addr(d_addr),
+        .d_rdata(d_rdata), .d_wdata(d_wdata),
+        .d_width(d_width)
     );
 
-    task feed_inst(input [31:0] inst);
-        i_data = inst;
-        @(posedge clk);
-        #1;
-    endtask
+    memory #(
+        .MEM_FILE("test.txt"),
+        .CAPACITY(512)
+    ) u_mem (
+        .clk(clk),
+        .i_addr(i_addr), .i_data(i_data),
+        .d_write(d_write), .d_width(d_width),
+        .d_addr(d_addr), .d_wdata(d_wdata),
+        .d_rdata(d_rdata)
+    );
 
     task dump;
-        integer i;
-        for (i = 0; i < 16; i = i + 1)
-            $display("r%-2d = 0x%08h = %0d",
-                i,
-                dut.u_rf.regs[i],
-                $signed(dut.u_rf.regs[i])
-            );
+        for (int i = 0; i < 16; i++)
+            $display("r%-2d = 0x%08h = %0d", i, dut.u_rf.regs[i], $signed(dut.u_rf.regs[i]));
         $display("==========");
+    endtask
+
+    task dump_mem(input [31:0] addr, input int count);
+        for (int i = 0; i < count; i++)
+            $display("mem[0x%08h] = 0x%08h", addr + i*4, u_mem.mem[(addr >> 2) + i]);
     endtask
 
     always @(posedge clk) begin
         #1;
         dump();
-    end
-
-    // simple stub memory for loads — responds to d_addr
-    always_comb begin
-        case (d_addr)
-            32'h00: d_rdata = 32'h000000AA;
-            32'h04: d_rdata = 32'h000000BB;
-            32'h08: d_rdata = 32'hDEADBEEF;
-            default: d_rdata = 32'hCAFEBABE;
-        endcase
-    end
-
-    // monitor stores
-    always @(posedge clk) begin
         if (d_write)
-            $display("[STORE] addr=0x%08h data=0x%08h", d_addr, d_wdata);
+            $display("[STORE] addr=0x%08h data=0x%08h width=%0d", d_addr, d_wdata, d_width);
     end
 
-    localparam NOP = 32'h00000013;
+    always @(posedge clk) begin
+        if (i_data == 32'h00100073) begin
+            repeat(4) @(posedge clk);
+            #1;
+            dump();
+            dump_mem(32'h0, 8);
+            $finish;
+        end
+    end
 
     initial begin
-        // reset
         reset = 1;
-        i_data = NOP;
         repeat(2) @(posedge clk);
         reset = 0;
-        #1;
-
-        // --- basic ALU ---
-        // addi x1, x0, 5
-        feed_inst(32'h00500093);
-        // addi x2, x0, 3
-        feed_inst(32'h00300113);
-        // add x3, x1, x2        -> x3 = 8
-        feed_inst(32'h002080B3);
-        repeat(4) feed_inst(NOP);
-
-        // --- store ---
-        // addi x4, x0, 0        -> x4 = 0  (base addr)
-        feed_inst(32'h00000213);
-        // addi x5, x0, 42       -> x5 = 42 (value to store)
-        feed_inst(32'h02a00293);
-        // sw x5, 0(x4)          -> mem[0] = 42
-        feed_inst(32'h00522023);
-        repeat(4) feed_inst(NOP);
-
-        // --- load ---
-        // lw x6, 0(x4)          -> x6 = stub returns 0xAA for addr 0
-        feed_inst(32'h00022303);
-        // lw x7, 4(x4)          -> x7 = stub returns 0xBB for addr 4
-        feed_inst(32'h00422383);
-        repeat(4) feed_inst(NOP);
-
-        // --- load then use (forwarding) ---
-        // lw  x8, 8(x4)         -> x8 = 0xDEADBEEF
-        feed_inst(32'h00822403);
-        // addi x9, x8, 1        -> x9 = 0xDEADBEF0 (load-use hazard if no interlock)
-        feed_inst(32'h00140493);
-        repeat(4) feed_inst(NOP);
-
+        repeat(20) @(posedge clk);
+        $display("=== memory dump ===");
+        dump_mem(32'h0, 8);
         $display("done");
         $finish;
     end

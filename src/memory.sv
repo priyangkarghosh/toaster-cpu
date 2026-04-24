@@ -1,9 +1,9 @@
 import riscv_pkg::*;
 
-module memory # (
+module memory #(
     parameter MEM_FILE = "",
     parameter W = 32,
-    parameter CAPACITY = 512 // in words
+    parameter CAPACITY = 512  // in words
 )(
     input clk,
 
@@ -18,40 +18,79 @@ module memory # (
     input [W-1:0] d_wdata,
     output logic [W-1:0] d_rdata
 );
-    localparam NUM_BYTES = (W / 8) * CAPACITY;
-    reg [7:0] mem [0:NUM_BYTES-1];
+    reg [W-1:0] mem [0:CAPACITY-1];
     initial $readmemh(MEM_FILE, mem);
 
-    // async instruction read
-    assign i_data = {mem[i_addr+3], mem[i_addr+2], mem[i_addr+1], mem[i_addr]};
+    // convert byte addresses to word
+    wire [$clog2(CAPACITY)-1:0] i_widx = i_addr[W-1:2];
+    wire [$clog2(CAPACITY)-1:0] d_widx = d_addr[W-1:2];
+    wire [1:0] d_boff = d_addr[1:0];
 
-    // async data read
+    // reads
+    assign i_data = mem[i_widx];
     always_comb begin
         case (d_width)
-            MW_BYTE:  d_rdata = {{24{mem[d_addr][7]}},  mem[d_addr]};
-            MW_HALF:  d_rdata = {{16{mem[d_addr+1][7]}}, mem[d_addr+1], mem[d_addr]};
-            MW_WORD:  d_rdata = {mem[d_addr+3], mem[d_addr+2], mem[d_addr+1], mem[d_addr]};
-            MW_BYTEU: d_rdata = {24'b0, mem[d_addr]};
-            MW_HALFU: d_rdata = {16'b0, mem[d_addr+1], mem[d_addr]};
-            default:  d_rdata = '0;
+            MW_BYTE: begin
+                case (d_boff)
+                    2'd0: d_rdata = {{24{mem[d_widx][7]}},  mem[d_widx][7:0]};
+                    2'd1: d_rdata = {{24{mem[d_widx][15]}}, mem[d_widx][15:8]};
+                    2'd2: d_rdata = {{24{mem[d_widx][23]}}, mem[d_widx][23:16]};
+                    2'd3: d_rdata = {{24{mem[d_widx][31]}}, mem[d_widx][31:24]};
+                endcase
+            end
+
+            MW_HALF: begin
+                case (d_boff)
+                    2'd0: d_rdata = {{16{mem[d_widx][15]}}, mem[d_widx][15:0]};
+                    2'd2: d_rdata = {{16{mem[d_widx][31]}}, mem[d_widx][31:16]};
+                    default: d_rdata = '0; // misaligned
+                endcase
+            end
+
+            MW_BYTEU: begin
+                case (d_boff)
+                    2'd0: d_rdata = {24'b0, mem[d_widx][7:0]};
+                    2'd1: d_rdata = {24'b0, mem[d_widx][15:8]};
+                    2'd2: d_rdata = {24'b0, mem[d_widx][23:16]};
+                    2'd3: d_rdata = {24'b0, mem[d_widx][31:24]};
+                endcase
+            end
+
+            MW_HALFU: begin
+                case (d_boff)
+                    2'd0: d_rdata = {16'b0, mem[d_widx][15:0]};
+                    2'd2: d_rdata = {16'b0, mem[d_widx][31:16]};
+                    default: d_rdata = '0; // misaligned
+                endcase
+            end
+
+            MW_WORD: d_rdata = mem[d_widx];
+            default: d_rdata = '0;
         endcase
     end
 
-    // sync data write
+    // writes
     always_ff @(posedge clk) begin
         if (d_write) begin
             case (d_width)
-                MW_BYTE: mem[d_addr] <= d_wdata[7:0];
+                MW_BYTE: begin
+                    case (d_boff)
+                        2'd0: mem[d_widx][7:0]   <= d_wdata[7:0];
+                        2'd1: mem[d_widx][15:8]  <= d_wdata[7:0];
+                        2'd2: mem[d_widx][23:16] <= d_wdata[7:0];
+                        2'd3: mem[d_widx][31:24] <= d_wdata[7:0];
+                    endcase
+                end
+
                 MW_HALF: begin
-                    mem[d_addr] <= d_wdata[7:0];
-                    mem[d_addr+1] <= d_wdata[15:8];
+                    case (d_boff)
+                        2'd0: mem[d_widx][15:0]  <= d_wdata[15:0];
+                        2'd2: mem[d_widx][31:16] <= d_wdata[15:0];
+                        default: ; // misaligned
+                    endcase
                 end
-                MW_WORD: begin
-                    mem[d_addr] <= d_wdata[7:0];
-                    mem[d_addr+1] <= d_wdata[15:8];
-                    mem[d_addr+2] <= d_wdata[23:16];
-                    mem[d_addr+3] <= d_wdata[31:24];
-                end
+
+                MW_WORD: mem[d_widx] <= d_wdata;
                 default: ;
             endcase
         end

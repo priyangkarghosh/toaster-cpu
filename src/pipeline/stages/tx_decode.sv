@@ -33,7 +33,10 @@ module tx_decode (
         .use_imm(dec.use_imm),
         .rf_en(dec.rf_en),
         .load_en(dec.load_en),
-        .store_en(dec.store_en)
+        .store_en(dec.store_en),
+        .branch_en(dec.branch_en),
+        .jal_en(dec.jal_en),
+        .jalr_en(dec.jalr_en)
     );
 
     // assign stuff
