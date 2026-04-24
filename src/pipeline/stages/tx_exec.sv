@@ -17,7 +17,7 @@ module tx_exec (
 );
     // wire alu
     logic [31:0] alu_a, alu_b, alu_out;
-    assign alu_a = id_ex.branch_en | id_ex.jal_en ? id_ex.pc : fwd_rr1;
+    assign alu_a = (id_ex.branch_en | id_ex.jal_en) ? id_ex.pc : fwd_rr1;
     assign alu_b = id_ex.use_imm ? id_ex.imm : fwd_rr2;
     alu inst_alu (
         .A(alu_a),

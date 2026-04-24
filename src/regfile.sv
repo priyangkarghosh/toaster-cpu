@@ -30,6 +30,11 @@ module regfile # (
     end
 
     // read logic decoding
-    assign rf_rr1 = (rf_rs1 == 0) ? 0 : regs[rf_rs1];
-    assign rf_rr2 = (rf_rs2 == 0) ? 0 : regs[rf_rs2];
+    assign rf_rr1 = (rf_rs1 == 0) ? 0 :
+                    (rf_en && rf_rs1 == rf_rd) ? rf_in :
+                    regs[rf_rs1];
+
+    assign rf_rr2 = (rf_rs2 == 0) ? 0 :
+                    (rf_en && rf_rs2 == rf_rd) ? rf_in :
+                    regs[rf_rs2];
 endmodule
