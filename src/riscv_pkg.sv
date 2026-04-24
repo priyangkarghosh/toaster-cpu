@@ -59,7 +59,6 @@ package riscv_pkg;
 
         logic use_imm;
         logic use_pc;
-        logic use_zero;
         logic rf_en;
         logic load_en;
         logic store_en;
