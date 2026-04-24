@@ -31,29 +31,29 @@ module datapath_tb;
     );
 
     task dump;
-        for (int i = 0; i < 16; i++)
+        for (int i = 0; i < 32; i++)
             $display("r%-2d = 0x%08h = %0d", i, dut.u_rf.regs[i], $signed(dut.u_rf.regs[i]));
         $display("==========");
     endtask
 
     task dump_mem(input [31:0] addr, input int count);
         for (int i = 0; i < count; i++)
-            $display("mem[0x%08h] = 0x%08h", addr + i*4, u_mem.mem[(addr >> 2) + i]);
+            $display("mem[0x%08h] = 0x%08h = %d", addr + i*4, u_mem.mem[(addr >> 2) + i], $signed(u_mem.mem[(addr >> 2) + i]));
     endtask
 
     always @(posedge clk) begin
         #1;
         dump();
-        if (d_write)
-            $display("[STORE] addr=0x%08h data=0x%08h width=%0d", d_addr, d_wdata, d_width);
+        $display("pc=%0d, alu_op=%b A=%0d B=%0d Z=%0d", dut.u_exec.id_ex.pc, dut.u_exec.id_ex.alu_op, dut.u_exec.alu_a, dut.u_exec.alu_b, dut.u_exec.alu_out);
+        if (d_write) $display("[STORE] addr=0x%08h data=0x%08h width=%0d", d_addr, d_wdata, d_width);
     end
 
     always @(posedge clk) begin
         if (i_data == 32'h00100073) begin
-            repeat(4) @(posedge clk);
+            repeat(6) @(posedge clk);
             #1;
             dump();
-            dump_mem(32'h0, 8);
+            dump_mem(32'h400, 100);
             $finish;
         end
     end
@@ -62,10 +62,5 @@ module datapath_tb;
         reset = 1;
         repeat(2) @(posedge clk);
         reset = 0;
-        repeat(20) @(posedge clk);
-        $display("=== memory dump ===");
-        dump_mem(32'h0, 8);
-        $display("done");
-        $finish;
     end
 endmodule
