@@ -16,12 +16,12 @@ module control (
 
     // output signals
     output logic use_imm,
+    output logic use_pc,
     output logic rf_en,
     output logic load_en,
     output logic store_en,
     output logic branch_en,
-    output logic jal_en,
-    output logic jalr_en
+    output logic jal_en
 );
     opcode_t opcode;
     logic [2:0] funct3;
@@ -33,10 +33,6 @@ module control (
     assign mem_width = mem_width_t'(funct3);
     assign br_type = branch_t'(funct3);
 
-    assign rs1 = ir[19:15];
-    assign rs2 = ir[24:20];
-    assign rd = ir[11:7];
-
     // immediate formats
     wire [31:0] imm_i = {{20{ir[31]}}, ir[31:20]};
     wire [31:0] imm_s = {{20{ir[31]}}, ir[31:25], ir[11:7]};
@@ -45,15 +41,21 @@ module control (
     wire [31:0] imm_j = {{11{ir[31]}}, ir[31], ir[19:12], ir[20], ir[30:21], 1'b0};
 
     always_comb begin
+        // assign reg sources
+        rs1 = ir[19:15];
+        rs2 = ir[24:20];
+        rd = ir[11:7];
+
+        // assign control signals
         imm = '0;
         alu_op = ALU_ADD;
         use_imm = 0;
+        use_pc = 0;
         rf_en = 0;
         load_en = 0;
         store_en = 0;
         branch_en = 0;
         jal_en = 0;
-        jalr_en = 0;
 
         case (opcode)
             OP_REG: begin
@@ -84,12 +86,14 @@ module control (
             OP_BRANCH: begin
                 imm = imm_b;
                 use_imm = 1;
+                use_pc = 1;
                 branch_en = 1;
             end
 
             OP_JAL: begin
                 imm = imm_j;
                 use_imm = 1;
+                use_pc = 1;
                 rf_en = 1;
                 jal_en = 1;
             end
@@ -98,7 +102,21 @@ module control (
                 imm = imm_i;
                 use_imm = 1;
                 rf_en = 1;
-                jalr_en = 1;
+                jal_en = 1;
+            end
+
+            OP_LUI: begin
+                rs1 = '0;
+                imm = imm_u;
+                use_imm = 1;
+                rf_en = 1;
+            end
+
+            OP_AUIPC: begin
+                imm = imm_u;
+                use_imm = 1;
+                use_pc = 1;
+                rf_en = 1;
             end
 
             default: ;

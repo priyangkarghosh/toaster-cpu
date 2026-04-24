@@ -58,12 +58,13 @@ package riscv_pkg;
         branch_t br_type;
 
         logic use_imm;
+        logic use_pc;
+        logic use_zero;
         logic rf_en;
         logic load_en;
         logic store_en;
         logic branch_en;
         logic jal_en;
-        logic jalr_en;
     } id_ex_t;
  
     // ex -> ma

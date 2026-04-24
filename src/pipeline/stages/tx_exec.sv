@@ -17,7 +17,7 @@ module tx_exec (
 );
     // wire alu
     logic [31:0] alu_a, alu_b, alu_out;
-    assign alu_a = (id_ex.branch_en | id_ex.jal_en) ? id_ex.pc : fwd_rr1;
+    assign alu_a = id_ex.use_pc ? id_ex.pc : fwd_rr1;
     assign alu_b = id_ex.use_imm ? id_ex.imm : fwd_rr2;
     alu inst_alu (
         .A(alu_a),
@@ -35,7 +35,7 @@ module tx_exec (
         .br_type(id_ex.br_type),
         .cond_ff(cond_ff)
     );
-    assign pc_en = id_ex.jal_en | id_ex.jalr_en | (id_ex.branch_en & cond_ff);
+    assign pc_en = id_ex.jal_en | (id_ex.branch_en & cond_ff);
 
     always_ff @(posedge clk) begin
         if (reset | bubble) begin
@@ -44,7 +44,7 @@ module tx_exec (
         
         else begin
             ex_ma.mem_width <= id_ex.mem_width;
-            ex_ma.data <= (id_ex.jal_en | id_ex.jalr_en) ? id_ex.pc_next : alu_out;
+            ex_ma.data <= id_ex.jal_en ? id_ex.pc_next : alu_out;
             ex_ma.rr2 <= fwd_rr2;
             ex_ma.rd <= id_ex.rd;
             ex_ma.rf_en <= id_ex.rf_en;

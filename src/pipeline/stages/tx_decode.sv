@@ -31,12 +31,12 @@ module tx_decode (
         .alu_op(dec.alu_op),
         .br_type(dec.br_type),
         .use_imm(dec.use_imm),
+        .use_pc(dec.use_pc),
         .rf_en(dec.rf_en),
         .load_en(dec.load_en),
         .store_en(dec.store_en),
         .branch_en(dec.branch_en),
-        .jal_en(dec.jal_en),
-        .jalr_en(dec.jalr_en)
+        .jal_en(dec.jal_en)
     );
 
     // assign stuff

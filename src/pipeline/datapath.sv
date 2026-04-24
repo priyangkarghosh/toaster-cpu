@@ -57,7 +57,7 @@ module datapath (
     ma_wb_t ma_wb;
 
     // hazard wiring
-    assign load_use = ex_ma.load_en & (id_ex.rs1 == ex_ma.rd || id_ex.rs2 == ex_ma.rd);
+    wire load_use = ex_ma.load_en & (id_ex.rs1 == ex_ma.rd || id_ex.rs2 == ex_ma.rd);
     assign stall = load_use;
     assign flush = pc_en & !load_use; // CHECK BEHAVIOUR OF BRANCH AFTER LOAD
     assign bubble = load_use;
