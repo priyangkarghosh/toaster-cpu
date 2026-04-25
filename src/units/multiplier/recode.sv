@@ -3,20 +3,20 @@ import unit_pkg::*;
 module recode #(
     parameter W = 32
 )(
-    input logic [W+2:0] q, // should already be 
+    input logic [W-1:0] q, // should already be 
     output booth_recode_t r [0:(W/2)-1]
 );
     // mapping table
     function booth_recode_t map(input [2:0] qb);
         case (qb)
-            3'b000: return ZERO;
-            3'b001: return ONE_POS;
-            3'b010: return ONE_POS;
-            3'b011: return TWO_POS;
-            3'b100: return TWO_NEG;
-            3'b101: return ONE_NEG;
-            3'b110: return ONE_NEG;
-            3'b111: return ZERO;
+            3'b000: return BOOTH_ZERO;
+            3'b001: return BOOTH_POS1;
+            3'b010: return BOOTH_POS1;
+            3'b011: return BOOTH_POS2;
+            3'b100: return BOOTH_NEG2;
+            3'b101: return BOOTH_NEG1;
+            3'b110: return BOOTH_NEG1;
+            3'b111: return BOOTH_ZERO;
             default: return ZERO;
         endcase
     endfunction

@@ -8,14 +8,9 @@ module bwall_multiplier (
     output logic [63:0] p,
     output logic valid_out
 );
-    localparam W  = 32;
-    localparam WE = 34;
-    localparam NP = 17;
-    localparam PW = 64;
-
     // sign extend inputs
-    wire [WE-1:0] x_eff = {2{signed_in & x[W-1]}, x};
-    wire [WE-1:0] y_eff = {2{signed_in & y[W-1]}, y};
+    wire [33:0] x_eff = {{2{signed_in & x[31]}}, x};
+    wire [33:0] y_eff = {{2{signed_in & y[31]}}, y};
 
     // partial products
     wire [33:0] pos1 = x_eff;
@@ -24,59 +19,110 @@ module bwall_multiplier (
     wire [33:0] neg2 = neg1 << 1;
 
     // recode y
-    booth_recode_t rc [0:NP-1];
-    recode #(.W(WE)) u_recode (.q(y_eff), .r(rc));
+    booth_recode_t rc [0:16];
+    recode #(.W(34)) u_recode (.q(y_eff), .r(rc));
+
+    // function to turn recoding into a partial product
+    function [33:0] rec_to_pp;
+        input booth_recode_t rec;
+        begin
+            case (rec)
+                BOOTH_ZERO: rec_to_pp = '0;
+                BOOTH_POS1: rec_to_pp = pos1;
+                BOOTH_NEG1: rec_to_pp = neg1;
+                BOOTH_POS2: rec_to_pp = pos2;
+                BOOTH_NEG2: rec_to_pp = neg2;
+                default: rec_to_pp = '0;
+            endcase
+        end
+    endfunction
 
     // wallace tree
     // > inputs
-    logic [67:0] a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q;
+    logic [67:0] wa, wb, wc, wd, we, wf, wg, wh, wi, wj, wk, wl, wm, wn, wo, wp, wq;
 
     // > layer 1
-    logic [67:0] s1, s2, s3, s4, s5;
-    logic [68:0] c1, c2, c3, c4, c5;
-    csa #(68) csa1(.a(a), .b(b), .cin(c), .s(s1), .cout(c1));
-    csa #(68) csa2(.a(d), .b(e), .cin(f), .s(s2), .cout(c2));
-    csa #(68) csa3(.a(g), .b(h), .cin(i), .s(s3), .cout(c3));
-    csa #(68) csa4(.a(j), .b(k), .cin(l), .s(s4), .cout(c4));
-    csa #(68) csa5(.a(m), .b(n), .cin(o), .s(s5), .cout(c5));
+    logic [67:0] ws1, ws2, ws3, ws4, ws5;
+    logic [68:0] wc1, wc2, wc3, wc4, wc5;
+    csa #(68) csa1(.a(wa), .b(wb), .cin(wc), .s(ws1), .cout(wc1));
+    csa #(68) csa2(.a(wd), .b(we), .cin(wf), .s(ws2), .cout(wc2));
+    csa #(68) csa3(.a(wg), .b(wh), .cin(wi), .s(ws3), .cout(wc3));
+    csa #(68) csa4(.a(wj), .b(wk), .cin(wl), .s(ws4), .cout(wc4));
+    csa #(68) csa5(.a(wm), .b(wn), .cin(wo), .s(ws5), .cout(wc5));
 
     // > layer 2
-    logic [68:0] s6, s7, s8, s9;
-    logic [69:0] c6, c7, c8, c9;
-    csa #(69) csa6(.a(c1), .b({1'b0,s1}), .cin({1'b0,s2}), .s(s6), .cout(c6));
-    csa #(69) csa7(.a(c2), .b(c3), .cin({1'b0,s3}), .s(s7), .cout(c7));
-    csa #(69) csa8(.a({1'b0,s4}), .b(c4), .cin({1'b0,s5}), .s(s8), .cout(c8));
-    csa #(69) csa9(.a(c5), .b({1'b0,p}), .cin({1'b0,q}), .s(s9), .cout(c9));
+    logic [68:0] ws6, ws7, ws8, ws9;
+    logic [69:0] wc6, wc7, wc8, wc9;
+    csa #(69) csa6(.a(wc1), .b({1'b0,ws1}), .cin({1'b0,ws2}), .s(ws6), .cout(wc6));
+    csa #(69) csa7(.a(wc2), .b(wc3), .cin({1'b0,ws3}), .s(ws7), .cout(wc7));
+    csa #(69) csa8(.a({1'b0,ws4}), .b(wc4), .cin({1'b0,ws5}), .s(ws8), .cout(wc8));
+    csa #(69) csa9(.a(wc5), .b({1'b0,wp}), .cin({1'b0,wq}), .s(ws9), .cout(wc9));
 
     // > layer 3
-    logic [69:0] s10, s11;
-    logic [70:0] c10, c11;
-    csa #(70) csa10(.a(c6), .b({1'b0,s6}), .cin({1'b0,s7}), .s(s10), .cout(c10));
-    csa #(70) csa11(.a(c7), .b(c8), .cin({1'b0,s8}), .s(s11), .cout(c11));
+    logic [69:0] ws10, ws11;
+    logic [70:0] wc10, wc11;
+    csa #(70) csa10(.a(wc6), .b({1'b0,ws6}), .cin({1'b0,ws7}), .s(ws10), .cout(wc10));
+    csa #(70) csa11(.a(wc7), .b(wc8), .cin({1'b0,ws8}), .s(ws11), .cout(wc11));
 
     // > layer 4
-    logic [70:0] s12, s13;
-    logic [71:0] c12, c13;
-    csa #(71) csa12(.a(c10), .b({1'b0,s10}), .cin({1'b0,s11}), .s(s12), .cout(c12));
-    csa #(71) csa13(.a(c11), .b({1'b0,s9}), .cin({1'b0,c9}), .s(s13), .cout(c13));
+    logic [70:0] ws12, ws13;
+    logic [71:0] wc12, wc13;
+    csa #(71) csa12(.a(wc10), .b({1'b0,ws10}), .cin({1'b0,ws11}), .s(ws12), .cout(wc12));
+    csa #(71) csa13(.a(wc11), .b({1'b0,ws9}), .cin({1'b0,wc9}), .s(ws13), .cout(wc13));
 
     // > layer 5
-    logic [71:0] s14;
-    logic [72:0] c14;
-    csa #(72) csa14(.a(c12), .b({1'b0,s12}), .cin({1'b0,s13}), .s(s14), .cout(c14));
+    logic [71:0] ws14;
+    logic [72:0] wc14;
+    csa #(72) csa14(.a(wc12), .b({1'b0,ws12}), .cin({1'b0,ws13}), .s(ws14), .cout(wc14));
 
     // > layer 6
-    logic [72:0] s15;
-    logic [73:0] c15;
-    csa #(73) csa15(.a(c14), .b({1'b0,s14}), .cin({1'b0,c13}), .s(s15), .cout(c15));
+    logic [72:0] ws15;
+    logic [73:0] wc15;
+    csa #(73) csa15(.a(wc14), .b({1'b0,ws14}), .cin({1'b0,wc13}), .s(ws15), .cout(wc15));
 
     // stage 1 (recoding)
     logic valid_s1;
-    logic [PW-1:0] pp [0:NP-1];
     always_ff @(posedge clk) begin
-        if (reset) valid_s1 <= 0; 
+        if (reset) valid_s1 <= 0;
         else begin
             valid_s1 <= valid_in;
+            wa <= 68'(signed'(rec_to_pp(rc[0])))  << 0;
+            wb <= 68'(signed'(rec_to_pp(rc[1])))  << 2;
+            wc <= 68'(signed'(rec_to_pp(rc[2])))  << 4;
+            wd <= 68'(signed'(rec_to_pp(rc[3])))  << 6;
+            we <= 68'(signed'(rec_to_pp(rc[4])))  << 8;
+            wf <= 68'(signed'(rec_to_pp(rc[5])))  << 10;
+            wg <= 68'(signed'(rec_to_pp(rc[6])))  << 12;
+            wh <= 68'(signed'(rec_to_pp(rc[7])))  << 14;
+            wi <= 68'(signed'(rec_to_pp(rc[8])))  << 16;
+            wj <= 68'(signed'(rec_to_pp(rc[9])))  << 18;
+            wk <= 68'(signed'(rec_to_pp(rc[10]))) << 20;
+            wl <= 68'(signed'(rec_to_pp(rc[11]))) << 22;
+            wm <= 68'(signed'(rec_to_pp(rc[12]))) << 24;
+            wn <= 68'(signed'(rec_to_pp(rc[13]))) << 26;
+            wo <= 68'(signed'(rec_to_pp(rc[14]))) << 28;
+            wp <= 68'(signed'(rec_to_pp(rc[15]))) << 30;
+            wq <= 68'(signed'(rec_to_pp(rc[16]))) << 32;
         end
+    end
+
+    // stage 2 (tree)
+    logic valid_s2;
+    logic [72:0] s2_s;
+    logic [73:0] s2_c;
+    always_ff @(posedge clk) begin
+        if (reset) valid_s2 <= 0;
+        else begin
+            valid_s2 <= valid_s1;
+            s2_s <= ws15;
+            s2_c <= wc15;
+        end
+    end
+
+    // stage 3 (final sum)
+    assign p = {s2_s[71], s2_s} + s2_c;
+    always_ff @(posedge clk) begin
+        if (reset) valid_out <= 0;
+        else valid_out <= valid_s2;
     end
 endmodule
