@@ -53,32 +53,32 @@ module bwall_multiplier (
     // > layer 2
     logic [68:0] ws6, ws7, ws8, ws9;
     logic [69:0] wc6, wc7, wc8, wc9;
-    csa #(69) csa6(.a(wc1), .b({ws1[67], ws1}), .cin({ws2[67], ws2}), .s(ws6), .cout(wc6));
-    csa #(69) csa7(.a(wc2), .b(wc3), .cin({ws3[67], ws3}), .s(ws7), .cout(wc7));
+    csa #(69) csa6(.a({ws1[67], ws1}), .b(wc1), .cin({ws2[67], ws2}), .s(ws6), .cout(wc6));
+    csa #(69) csa7(.a(wc2), .b({ws3[67], ws3}), .cin(wc3), .s(ws7), .cout(wc7));
     csa #(69) csa8(.a({ws4[67], ws4}), .b(wc4), .cin({ws5[67], ws5}), .s(ws8), .cout(wc8));
     csa #(69) csa9(.a(wc5), .b({wp[67], wp}), .cin({wq[67], wq}), .s(ws9), .cout(wc9));
 
     // > layer 3
     logic [69:0] ws10, ws11;
     logic [70:0] wc10, wc11;
-    csa #(70) csa10(.a(wc6), .b({ws6[68], ws6}), .cin({ws7[68], ws7}), .s(ws10), .cout(wc10));
-    csa #(70) csa11(.a(wc7), .b(wc8), .cin({ws8[68], ws8}), .s(ws11), .cout(wc11));
+    csa #(70) csa10(.a({ws6[68], ws6}), .b(wc6), .cin({ws7[68], ws7}), .s(ws10), .cout(wc10));
+    csa #(70) csa11(.a(wc7), .b({ws8[68], ws8}), .cin(wc8), .s(ws11), .cout(wc11));
 
     // > layer 4
     logic [70:0] ws12, ws13;
     logic [71:0] wc12, wc13;
-    csa #(71) csa12(.a(wc10), .b({ws10[69], ws10}), .cin({ws11[69], ws11}), .s(ws12), .cout(wc12));
+    csa #(71) csa12(.a({ws10[69], ws10}), .b(wc10), .cin({ws11[69], ws11}), .s(ws12), .cout(wc12));
     csa #(71) csa13(.a(wc11), .b({{2{ws9[68]}}, ws9}), .cin({1'b0, wc9}), .s(ws13), .cout(wc13));
 
     // > layer 5
     logic [71:0] ws14;
     logic [72:0] wc14;
-    csa #(72) csa14(.a(wc12), .b({ws12[70], ws12}), .cin({ws13[70], ws13}), .s(ws14), .cout(wc14));
+    csa #(72) csa14(.a({ws12[70], ws12}), .b(wc12), .cin({ws13[70], ws13}), .s(ws14), .cout(wc14));
 
     // > layer 6
     logic [72:0] ws15;
     logic [73:0] wc15;
-    csa #(73) csa15(.a(wc14), .b({ws14[71], ws14}), .cin({1'b0, wc13}), .s(ws15), .cout(wc15));
+    csa #(73) csa15(.a({ws14[71], ws14}), .b(wc14), .cin({1'b0, wc13}), .s(ws15), .cout(wc15));
 
     // stage 1 (recoding)
     logic valid_s1;
@@ -121,7 +121,7 @@ module bwall_multiplier (
 
     // stage 3 (final sum)
     logic [73:0] final_sum;
-    assign final_sum = {1'b0, s2_s} + s2_c;
+    assign final_sum = {s2_s[72], s2_s} + s2_c;
     assign p = final_sum[63:0];
     always_ff @(posedge clk) begin
         if (reset) valid_out <= 0;
