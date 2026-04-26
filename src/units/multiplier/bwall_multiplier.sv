@@ -53,32 +53,32 @@ module bwall_multiplier (
     // > layer 2
     logic [68:0] ws6, ws7, ws8, ws9;
     logic [69:0] wc6, wc7, wc8, wc9;
-    csa #(69) csa6(.a(wc1), .b({1'b0,ws1}), .cin({1'b0,ws2}), .s(ws6), .cout(wc6));
-    csa #(69) csa7(.a(wc2), .b(wc3), .cin({1'b0,ws3}), .s(ws7), .cout(wc7));
-    csa #(69) csa8(.a({1'b0,ws4}), .b(wc4), .cin({1'b0,ws5}), .s(ws8), .cout(wc8));
-    csa #(69) csa9(.a(wc5), .b({1'b0,wp}), .cin({1'b0,wq}), .s(ws9), .cout(wc9));
+    csa #(69) csa6(.a(wc1), .b({ws1[67], ws1}), .cin({ws2[67], ws2}), .s(ws6), .cout(wc6));
+    csa #(69) csa7(.a(wc2), .b(wc3), .cin({ws3[67], ws3}), .s(ws7), .cout(wc7));
+    csa #(69) csa8(.a({ws4[67], ws4}), .b(wc4), .cin({ws5[67], ws5}), .s(ws8), .cout(wc8));
+    csa #(69) csa9(.a(wc5), .b({wp[67], wp}), .cin({wq[67], wq}), .s(ws9), .cout(wc9));
 
     // > layer 3
     logic [69:0] ws10, ws11;
     logic [70:0] wc10, wc11;
-    csa #(70) csa10(.a(wc6), .b({1'b0,ws6}), .cin({1'b0,ws7}), .s(ws10), .cout(wc10));
-    csa #(70) csa11(.a(wc7), .b(wc8), .cin({1'b0,ws8}), .s(ws11), .cout(wc11));
+    csa #(70) csa10(.a(wc6), .b({ws6[68], ws6}), .cin({ws7[68], ws7}), .s(ws10), .cout(wc10));
+    csa #(70) csa11(.a(wc7), .b(wc8), .cin({ws8[68], ws8}), .s(ws11), .cout(wc11));
 
     // > layer 4
     logic [70:0] ws12, ws13;
     logic [71:0] wc12, wc13;
-    csa #(71) csa12(.a(wc10), .b({1'b0,ws10}), .cin({1'b0,ws11}), .s(ws12), .cout(wc12));
-    csa #(71) csa13(.a(wc11), .b({1'b0,ws9}), .cin({1'b0,wc9}), .s(ws13), .cout(wc13));
+    csa #(71) csa12(.a(wc10), .b({ws10[69], ws10}), .cin({ws11[69], ws11}), .s(ws12), .cout(wc12));
+    csa #(71) csa13(.a(wc11), .b({{2{ws9[68]}}, ws9}), .cin({1'b0, wc9}), .s(ws13), .cout(wc13));
 
     // > layer 5
     logic [71:0] ws14;
     logic [72:0] wc14;
-    csa #(72) csa14(.a(wc12), .b({1'b0,ws12}), .cin({1'b0,ws13}), .s(ws14), .cout(wc14));
+    csa #(72) csa14(.a(wc12), .b({ws12[70], ws12}), .cin({ws13[70], ws13}), .s(ws14), .cout(wc14));
 
     // > layer 6
     logic [72:0] ws15;
     logic [73:0] wc15;
-    csa #(73) csa15(.a(wc14), .b({1'b0,ws14}), .cin({1'b0,wc13}), .s(ws15), .cout(wc15));
+    csa #(73) csa15(.a(wc14), .b({ws14[71], ws14}), .cin({1'b0, wc13}), .s(ws15), .cout(wc15));
 
     // stage 1 (recoding)
     logic valid_s1;
@@ -86,23 +86,23 @@ module bwall_multiplier (
         if (reset) valid_s1 <= 0;
         else begin
             valid_s1 <= valid_in;
-            wa <= 68'(signed'(rec_to_pp(rc[0])))  << 0;
-            wb <= 68'(signed'(rec_to_pp(rc[1])))  << 2;
-            wc <= 68'(signed'(rec_to_pp(rc[2])))  << 4;
-            wd <= 68'(signed'(rec_to_pp(rc[3])))  << 6;
-            we <= 68'(signed'(rec_to_pp(rc[4])))  << 8;
-            wf <= 68'(signed'(rec_to_pp(rc[5])))  << 10;
-            wg <= 68'(signed'(rec_to_pp(rc[6])))  << 12;
-            wh <= 68'(signed'(rec_to_pp(rc[7])))  << 14;
-            wi <= 68'(signed'(rec_to_pp(rc[8])))  << 16;
-            wj <= 68'(signed'(rec_to_pp(rc[9])))  << 18;
-            wk <= 68'(signed'(rec_to_pp(rc[10]))) << 20;
-            wl <= 68'(signed'(rec_to_pp(rc[11]))) << 22;
-            wm <= 68'(signed'(rec_to_pp(rc[12]))) << 24;
-            wn <= 68'(signed'(rec_to_pp(rc[13]))) << 26;
-            wo <= 68'(signed'(rec_to_pp(rc[14]))) << 28;
-            wp <= 68'(signed'(rec_to_pp(rc[15]))) << 30;
-            wq <= 68'(signed'(rec_to_pp(rc[16]))) << 32;
+            wa <= 68'(signed'(rec_to_pp(rc[0])));
+            wb <= 68'(signed'({rec_to_pp(rc[1]),  2'b0}));
+            wc <= 68'(signed'({rec_to_pp(rc[2]),  4'b0}));
+            wd <= 68'(signed'({rec_to_pp(rc[3]),  6'b0}));
+            we <= 68'(signed'({rec_to_pp(rc[4]),  8'b0}));
+            wf <= 68'(signed'({rec_to_pp(rc[5]),  10'b0}));
+            wg <= 68'(signed'({rec_to_pp(rc[6]),  12'b0}));
+            wh <= 68'(signed'({rec_to_pp(rc[7]),  14'b0}));
+            wi <= 68'(signed'({rec_to_pp(rc[8]),  16'b0}));
+            wj <= 68'(signed'({rec_to_pp(rc[9]),  18'b0}));
+            wk <= 68'(signed'({rec_to_pp(rc[10]), 20'b0}));
+            wl <= 68'(signed'({rec_to_pp(rc[11]), 22'b0}));
+            wm <= 68'(signed'({rec_to_pp(rc[12]), 24'b0}));
+            wn <= 68'(signed'({rec_to_pp(rc[13]), 26'b0}));
+            wo <= 68'(signed'({rec_to_pp(rc[14]), 28'b0}));
+            wp <= 68'(signed'({rec_to_pp(rc[15]), 30'b0}));
+            wq <= 68'(signed'({rec_to_pp(rc[16]), 32'b0}));
         end
     end
 
@@ -120,7 +120,9 @@ module bwall_multiplier (
     end
 
     // stage 3 (final sum)
-    assign p = {s2_s[71], s2_s} + s2_c;
+    logic [73:0] final_sum;
+    assign final_sum = {1'b0, s2_s} + s2_c;
+    assign p = final_sum[63:0];
     always_ff @(posedge clk) begin
         if (reset) valid_out <= 0;
         else valid_out <= valid_s2;

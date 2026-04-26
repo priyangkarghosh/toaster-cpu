@@ -3,7 +3,7 @@ import unit_pkg::*;
 module recode #(
     parameter W = 32
 )(
-    input logic [W-1:0] q, // should already be 
+    input logic [W-1:0] q,
     output booth_recode_t r [0:(W/2)-1]
 );
     // mapping table
@@ -17,7 +17,7 @@ module recode #(
             3'b101: return BOOTH_NEG1;
             3'b110: return BOOTH_NEG1;
             3'b111: return BOOTH_ZERO;
-            default: return ZERO;
+            default: return BOOTH_ZERO;
         endcase
     endfunction
 
@@ -27,7 +27,7 @@ module recode #(
     // do the recoding
     genvar i;
     generate
-        for (i = 0; i < W/2; i++) begin
+        for (i = 0; i < W/2; i++) begin : gen_r
             assign r[i] = map(q_ext[2*i+2 : 2*i]);
         end
     endgenerate
