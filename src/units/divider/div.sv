@@ -1,4 +1,4 @@
-module srt4_divider # (
+module div # (
     parameter W = 32
 )(
     input logic clk, reset, start, signed_in,
