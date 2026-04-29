@@ -13,7 +13,6 @@ module mul_csa #(
     assign cout = {c[W-2:0], 1'b0};
 endmodule
 
-
 module mul (
     input logic clk, reset,
     input logic signed_in,
@@ -188,13 +187,10 @@ module mul (
         end
     end
 
-    // stage 5
-    wire [67:0] sum = s4_s + s4_c;
+    // stage 5 (adder)
+    wire [63:0] sum = s4_s[63:0] + s4_c[63:0];
     always_ff @(posedge clk) begin
         if (reset) valid_out <= 0;
-        else begin
-            valid_out <= s4_valid;
-            p <= s4_s + s4_c;
-        end
+        else p <= sum;
     end
 endmodule
