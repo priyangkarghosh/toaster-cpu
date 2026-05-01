@@ -191,6 +191,9 @@ module mul (
     wire [63:0] sum = s4_s[63:0] + s4_c[63:0];
     always_ff @(posedge clk) begin
         if (reset) valid_out <= 0;
-        else p <= sum;
+        else begin
+            valid_out <= s4_valid;
+            p <= sum;
+        end
     end
 endmodule
