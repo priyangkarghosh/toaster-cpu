@@ -15,14 +15,14 @@ endmodule
 
 module mul (
     input logic clk, reset,
-    input logic signed_in,
+    input logic sign_x, sign_y,
     input logic valid_in,
     input logic [31:0] x, y,
     output logic [63:0] p,
     output logic valid_out
 );
-    wire [33:0] x_eff = {{2{signed_in & x[31]}}, x};
-    wire [33:0] y_eff = {{2{signed_in & y[31]}}, y};
+    wire [33:0] x_eff = {{2{sign_x & x[31]}}, x};
+    wire [33:0] y_eff = {{2{sign_y & y[31]}}, y};
 
     // magnitudes
     wire [33:0] mag1 = x_eff;

@@ -12,6 +12,18 @@ package riscv_pkg;
         ALU_OR   = 4'b0110,
         ALU_AND  = 4'b0111
     } alu_op_t;
+
+    // mul-ext operations
+    typedef enum logic [2:0] {
+        MDU_MUL    = 3'b000,
+        MDU_MULH   = 3'b001,
+        MDU_MULHSU = 3'b010,
+        MDU_MULHU  = 3'b011,
+        MDU_DIV    = 3'b100,
+        MDU_DIVU   = 3'b101,
+        MDU_REM    = 3'b110,
+        MDU_REMU   = 3'b111
+    } mdu_op_t;
     
     // funct3
     typedef enum logic [2:0] {
@@ -64,6 +76,10 @@ package riscv_pkg;
         logic store_en;
         logic branch_en;
         logic jal_en;
+
+        // extensions
+        logic mul_en;
+        logic div_en;
     } id_ex_t;
  
     // ex -> ma

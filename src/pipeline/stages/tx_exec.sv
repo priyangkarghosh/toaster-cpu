@@ -16,14 +16,14 @@ module tx_exec (
     output ex_ma_t ex_ma
 );
     // wire alu
-    logic [31:0] alu_a, alu_b, alu_out;
-    assign alu_a = id_ex.use_pc ? id_ex.pc : fwd_rr1;
-    assign alu_b = id_ex.use_imm ? id_ex.imm : fwd_rr2;
+    logic [31:0] alu_x, alu_y, alu_out;
+    assign alu_x = id_ex.use_pc ? id_ex.pc : fwd_rr1;
+    assign alu_y = id_ex.use_imm ? id_ex.imm : fwd_rr2;
     alu inst_alu (
-        .A(alu_a),
-        .B(alu_b),
+        .x(alu_a),
+        .y(alu_b),
         .select(id_ex.alu_op),
-        .Z(alu_out)
+        .z(alu_out)
     );
     assign pc_target = alu_out;
 

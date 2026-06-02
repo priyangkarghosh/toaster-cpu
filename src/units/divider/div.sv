@@ -19,7 +19,7 @@ endmodule
 module div #(
     parameter W = 32
 )(
-    input logic clk, reset, start, signed_in,
+    input logic clk, reset, start, sign_x, sign_y,
     input logic [W-1:0] x, y,
     output logic [W-1:0] q, r,
     output logic busy, done, div_zero
@@ -28,8 +28,8 @@ module div #(
     localparam WL2 = $clog2(W);
 
     // normalize signs
-    wire [W-1:0] x_eff = (x[W-1] & signed_in) ? -x : x;
-    wire [W-1:0] y_eff = (y[W-1] & signed_in) ? -y : y;
+    wire [W-1:0] x_eff = (x[W-1] & sign_x) ? -x : x;
+    wire [W-1:0] y_eff = (y[W-1] & sign_y) ? -y : y;
 
     // state registers
     logic [W2+2:0] rxq; // partial remainder (upper) + quotient (lower)
@@ -113,12 +113,12 @@ module div #(
     logic [W-1:0] quot_pre_r;
 
     // -> correct4 in
-    wire [W-1:0]  q_corr      = quot_pre_r + {{(W-1){1'b0}}, r_overshoot_r};
-    wire [W-1:0]  r_mag_final = r_overshoot_r ? r_mag_r : r_unnorm_r;
+    wire [W-1:0] q_corr = quot_pre_r + {{(W-1){1'b0}}, r_overshoot_r};
+    wire [W-1:0] r_mag_final = r_overshoot_r ? r_mag_r : r_unnorm_r;
 
     // outputs
-    wire negate_q = signed_in & (x[W-1] ^ y[W-1]);
-    wire negate_r = signed_in &  x[W-1];
+    wire negate_r = sign_x & x[W-1];
+    wire negate_q = negate_r ^ (sign_y & y[W-1]);
     assign q = rxq[W-1:0];
     assign r = rxq[W2-1:W];
 
@@ -138,7 +138,7 @@ module div #(
     csa_div #(W+3) css2 (.sub(1'b1), .a(rxq[W2:W-2]), .b({2'b0, y_norm, 1'b0}), .cin({c[W:0], 2'b0}), .s(ss2), .cout(cs2));
 
     // one-host mux
-    wire [2:0] digit   = {q_sign,   q1,   q0};
+    wire [2:0] digit = {q_sign, q1, q0};
     wire [2:0] digit_r = {q_sign_r, q1_r, q0_r};
     wire sel_000 = (digit_r == 3'b000);
     wire sel_001 = (digit_r == 3'b001);
