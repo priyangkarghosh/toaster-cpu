@@ -1,4 +1,9 @@
 package riscv_pkg;
+    // extension constants
+    localparam logic [6:0] FUNCT7_BASE = 7'b0000000;
+    localparam logic [6:0] FUNCT7_ALT  = 7'b0100000;
+    localparam logic [6:0] FUNCT7_MEXT = 7'b0000001;
+
     // alt + funct3
     typedef enum logic [3:0] {
         ALU_ADD  = 4'b0000,
@@ -37,6 +42,7 @@ package riscv_pkg;
     // funct3
     typedef enum logic [2:0] {
         BR_BEQ  = 3'h0,
+        BR_NONE = 3'h2,
         BR_BNE  = 3'h1,
         BR_BLT  = 3'h4,
         BR_BGE  = 3'h5,
@@ -77,14 +83,15 @@ package riscv_pkg;
         logic branch_en;
         logic jal_en;
 
-        // extensions
-        logic mul_en;
-        logic div_en;
+        // mul extension
+        mdu_op_t mdu_op;
+        logic mdu_en;
     } id_ex_t;
  
     // ex -> ma
     typedef struct packed {
-        logic [31:0] data, rr2;
+        logic [31:0] data;
+        logic [31:0] rr2;
         logic [4:0] rd;
         mem_width_t mem_width;
         

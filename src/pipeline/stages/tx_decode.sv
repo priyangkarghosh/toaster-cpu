@@ -36,7 +36,11 @@ module tx_decode (
         .load_en(dec.load_en),
         .store_en(dec.store_en),
         .branch_en(dec.branch_en),
-        .jal_en(dec.jal_en)
+        .jal_en(dec.jal_en),
+
+        // extensions
+        .mdu_op(dec.mdu_op),
+        .mdu_en(dec.mdu_en)
     );
 
     // assign stuff
@@ -48,6 +52,8 @@ module tx_decode (
         if (reset || flush) begin
             id_ex <= '0;
             id_ex.alu_op <= ALU_ADD;
+            id_ex.br_type <= BR_NONE;
+            id_ex.mdu_op <= MDU_MUL;
         end 
         
         else if (!stall) begin

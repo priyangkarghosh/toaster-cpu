@@ -21,8 +21,13 @@ module control (
     output logic load_en,
     output logic store_en,
     output logic branch_en,
-    output logic jal_en
+    output logic jal_en,
+
+    // extensions
+    output mdu_op_t mdu_op,
+    output logic mdu_en
 );
+    // rest of logic
     opcode_t opcode;
     logic [2:0] funct3;
     logic [6:0] funct7;
@@ -57,14 +62,18 @@ module control (
         branch_en = 0;
         jal_en = 0;
 
+        mdu_op = mdu_op_t'(funct3);
+        mdu_en = 0;
+
         case (opcode)
             OP_REG: begin
-                alu_op = alu_op_t'({funct7[5], funct3});
                 rf_en = 1;
+                if (funct7 == FUNCT7_MEXT) mdu_en = 1;
+                else alu_op = alu_op_t'({funct7[5], funct3});
             end
 
             OP_IMM: begin
-                alu_op = alu_op_t'({funct7[5] & (funct3 == ALU_SRL[2:0]), funct3});
+                alu_op = alu_op_t'({(funct7 == FUNCT7_ALT) & (funct3 == 3'b101), funct3});
                 imm = imm_i;
                 use_imm = 1;
                 rf_en = 1;

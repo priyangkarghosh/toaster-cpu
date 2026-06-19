@@ -251,7 +251,10 @@ module div #(
                         counter  <= '0;
 
                         if (y == '0) begin
-                            rxq      <= '0;
+                            // RV32M divide-by-zero results:
+                            //   DIV/DIVU -> -1 (all-ones in quotient slot)
+                            //   REM/REMU -> dividend x (in remainder slot)
+                            rxq      <= {3'b0, x, {W{1'b1}}};
                             div_zero <= 1'b1;
                             state    <= DONE;
                         end

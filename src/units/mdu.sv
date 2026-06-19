@@ -10,8 +10,8 @@ module mdu (
     output logic div_zero,
     
     // params
-    input mdu_op_t select,
     input logic [31:0] x, y,
+    input mdu_op_t select,
     output logic [31:0] z
 );
     // decode from select
@@ -56,40 +56,36 @@ module mdu (
     );
 
     // fsm
-    typedef enum logic [1:0] { IDLE, MUL_WAIT, DIV_WAIT, DONE } state_t;
+    typedef enum logic [1:0] { IDLE, MUL_WAIT, DIV_WAIT } state_t;
     state_t state;
 
     logic is_rem_q;
     logic use_high_q;
-    logic div_zero_q;
     logic [31:0] result_q;
+    assign busy = (state != IDLE);
     always_ff @(posedge clk) begin
         if (reset) begin
             state <= IDLE;
-            busy <= 1'b0;
             valid_out <= 1'b0;
             div_zero <= 1'b0;
             result_q <= '0;
-            div_zero_q <= 1'b0;
             is_rem_q <= 1'b0;
             use_high_q <= 1'b0;
             mul_valid_in <= 1'b0;
             div_start <= 1'b0;
         end
-
+ 
         else begin
             mul_valid_in <= 1'b0;
             div_start <= 1'b0;
             valid_out <= 1'b0;
-
+ 
             case (state)
                 IDLE: begin
-                    busy <= 1'b0;
                     if (valid_in) begin
-                        busy <= 1'b1;
                         is_rem_q <= is_rem;
                         use_high_q <= use_high;
-
+                        
                         if (is_mul) begin
                             mul_valid_in <= 1'b1;
                             state <= MUL_WAIT;
@@ -101,28 +97,22 @@ module mdu (
                         end
                     end
                 end
-
-                // mul is pipelined but we treat it as blocking
+ 
                 MUL_WAIT: begin
                     if (mul_valid_out) begin
                         result_q <= use_high_q ? mul_p[63:32] : mul_p[31:0];
-                        state <= DONE;
+                        valid_out <= 1'b1;
+                        state <= IDLE;
                     end
                 end
-
+ 
                 DIV_WAIT: begin
                     if (div_done) begin
-                        div_zero_q <= div_zero_raw;
                         result_q <= is_rem_q ? div_r : div_q;
-                        state <= DONE;
+                        valid_out <= 1'b1;
+                        div_zero <= div_zero_raw;
+                        state <= IDLE;
                     end
-                end
-
-                DONE: begin
-                    valid_out <= 1'b1;
-                    div_zero <= div_zero_q;
-                    busy <= 1'b0;
-                    state <= IDLE;
                 end
             endcase
         end

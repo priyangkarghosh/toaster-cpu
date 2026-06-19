@@ -15,7 +15,7 @@ module datapath (
     output mem_width_t d_width
 );
     // control wiring
-    logic stall, flush, bubble;
+    logic stall, flush, bubble, exec_busy;
 
     // pc
     logic pc_en;
@@ -58,9 +58,9 @@ module datapath (
 
     // hazard wiring
     wire load_use = ex_ma.load_en & (id_ex.rs1 == ex_ma.rd || id_ex.rs2 == ex_ma.rd);
-    assign stall = load_use;
+    assign stall = load_use | exec_busy;
     assign flush = pc_en & !load_use; // CHECK BEHAVIOUR OF BRANCH AFTER LOAD
-    assign bubble = load_use;
+    assign bubble = stall & ~flush;
 
     // forwarding
     logic [31:0] fwd_rr1, fwd_rr2;
@@ -101,9 +101,11 @@ module datapath (
     );
 
     tx_exec u_exec (
-        .clk(clk), 
-        .reset(reset), 
+        .clk(clk),
+        .reset(reset),
         .bubble(bubble),
+        .load_use(load_use),
+        .exec_busy(exec_busy),
         .id_ex(id_ex),
         .fwd_rr1(fwd_rr1), 
         .fwd_rr2(fwd_rr2),
