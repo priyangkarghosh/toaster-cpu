@@ -26,7 +26,7 @@ module mul (
     wire [33:0] x_eff = {{2{sign_x & x[31]}}, x};
     wire [33:0] y_eff = {{2{sign_y & y[31]}}, y};
 
-    // partial-product magnitudes (±1*x and ±2*x)
+    // partial-product magnitudes (±1x and ±2x)
     wire [33:0] mag1 = x_eff;
     wire [33:0] mag2 = x_eff << 1;
 
@@ -58,8 +58,9 @@ module mul (
 
     // sign ext each partial product to WW bits and shift it into position
     logic [WW-1:0] pp_shifted [0:N_PP-1];
+    genvar gi, g;
     generate
-        for (genvar gi = 0; gi < N_PP; gi++) begin : gen_pp_shift
+        for (gi = 0; gi < N_PP; gi = gi + 1) begin : gen_pp_shift
             assign pp_shifted[gi] = WW'(signed'(pp[gi])) << (2*gi);
         end
     endgenerate
@@ -83,7 +84,7 @@ module mul (
     // ------------------------------------------------------------------
     logic [WW-1:0] l1_s [0:5], l1_c [0:5];
     generate
-        for (genvar g = 0; g < 6; g++) begin : gen_l1
+        for (g = 0; g < 6; g = g + 1) begin : gen_l1
             csa #(.W(WW)) u (
                 .sub(1'b0),
                 .a(s1[3*g]),
@@ -100,7 +101,7 @@ module mul (
     // ------------------------------------------------------------------
     logic [WW-1:0] l1_out [0:11];
     generate
-        for (genvar g = 0; g < 6; g++) begin : gen_l1_flat
+        for (g = 0; g < 6; g = g + 1) begin : gen_l1_flat
             assign l1_out[2*g] = l1_s[g];
             assign l1_out[2*g + 1] = l1_c[g];
         end
@@ -108,7 +109,7 @@ module mul (
 
     logic [WW-1:0] l2_s [0:3], l2_c [0:3];
     generate
-        for (genvar g = 0; g < 4; g++) begin : gen_l2
+        for (g = 0; g < 4; g = g + 1) begin : gen_l2
             csa #(.W(WW)) u (
                 .sub (1'b0),
                 .a(l1_out[3*g]),
@@ -141,7 +142,7 @@ module mul (
     // ------------------------------------------------------------------
     logic [WW-1:0] l3_s [0:1], l3_c [0:1];
     generate
-        for (genvar g = 0; g < 2; g++) begin : gen_l3
+        for (g = 0; g < 2; g = g + 1) begin : gen_l3
             csa #(.W(WW)) u (
                 .sub(1'b0),
                 .a(s2[3*g]),
@@ -167,7 +168,7 @@ module mul (
 
     logic [WW-1:0] l4_s [0:1], l4_c [0:1];
     generate
-        for (genvar g = 0; g < 2; g++) begin : gen_l4
+        for (g = 0; g < 2; g = g + 1) begin : gen_l4
             csa #(.W(WW)) u (
                 .sub (1'b0),
                 .a(l34_out[3*g]),
