@@ -27,8 +27,20 @@ module mdu (
 
     // mul datapath
     logic [63:0] mul_p;
-    logic mul_valid_in;
     logic mul_valid_out;
+
+    // div datapath
+    logic [31:0] div_q, div_r;
+    logic div_busy_raw, div_done, div_zero_raw;
+
+    // fsm
+    typedef enum logic [1:0] { IDLE, MUL_WAIT, DIV_WAIT } state_t;
+    state_t state;
+
+    // combinational so the mul/div samples x,y on the same cycle the op enters EX
+    wire mul_valid_in = (state == IDLE) & valid_in & is_mul;
+    wire div_start = (state == IDLE) & valid_in & ~is_mul;
+
     mul u_mul (
         .clk(clk),
         .reset(reset),
@@ -39,10 +51,6 @@ module mdu (
         .valid_out(mul_valid_out)
     );
 
-    // div datapath
-    logic div_start;
-    logic [31:0] div_q, div_r;
-    logic div_busy_raw, div_done, div_zero_raw;
     div #(.W(32)) u_div (
         .clk(clk),
         .reset(reset),
@@ -54,10 +62,6 @@ module mdu (
         .done(div_done),
         .div_zero(div_zero_raw)
     );
-
-    // fsm
-    typedef enum logic [1:0] { IDLE, MUL_WAIT, DIV_WAIT } state_t;
-    state_t state;
 
     logic is_rem_q;
     logic use_high_q;
@@ -71,30 +75,17 @@ module mdu (
             result_q <= '0;
             is_rem_q <= 1'b0;
             use_high_q <= 1'b0;
-            mul_valid_in <= 1'b0;
-            div_start <= 1'b0;
         end
- 
+
         else begin
-            mul_valid_in <= 1'b0;
-            div_start <= 1'b0;
             valid_out <= 1'b0;
- 
+
             case (state)
                 IDLE: begin
                     if (valid_in) begin
                         is_rem_q <= is_rem;
                         use_high_q <= use_high;
-                        
-                        if (is_mul) begin
-                            mul_valid_in <= 1'b1;
-                            state <= MUL_WAIT;
-                        end 
-                        
-                        else begin
-                            div_start <= 1'b1;
-                            state <= DIV_WAIT;
-                        end
+                        state <= is_mul ? MUL_WAIT : DIV_WAIT;
                     end
                 end
  
