@@ -44,7 +44,6 @@ module tx_exec (
         .valid_in(mdu_starting),
         .busy(mdu_busy),
         .valid_out(mdu_valid_out),
-        .div_zero(),
         .x(fwd_rr1),
         .y(fwd_rr2),
         .select(id_ex.mdu_op),

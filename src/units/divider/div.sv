@@ -1,28 +1,16 @@
-module csa_div #(
-    parameter W = 32
-)(
-    input logic sub,
-    input logic [W-1:0] a, b, cin,
-    output logic [W-1:0] s, cout
-);
-    wire [W-1:0] b_eff = b ^ {W{sub}};
-
-    assign cout[0] = 1'b0;
-    assign s[0] = a[0] ^ b_eff[0] ^ sub;
-    assign cout[1] = (a[0] & b_eff[0]) | (a[0] & sub) | (b_eff[0] & sub);
-    assign s[W-1:1] = a[W-1:1] ^ b_eff[W-1:1] ^ cin[W-1:1];
-    assign cout[W-1:2] = (a[W-2:1] & b_eff[W-2:1]) | 
-                         (a[W-2:1] & cin[W-2:1]) | 
-                         (b_eff[W-2:1] & cin[W-2:1]);
-endmodule
-
 module div #(
     parameter W = 32
 )(
-    input logic clk, reset, start, sign_x, sign_y,
+    // sync
+    input logic clk, reset,
+
+    // inputs
+    input logic start, sign_x, sign_y,
     input logic [W-1:0] x, y,
+
+    // outputs
     output logic [W-1:0] q, r,
-    output logic busy, done, div_zero
+    output logic busy, done
 );
     localparam W2 = W * 2;
     localparam WL2 = $clog2(W);
@@ -61,13 +49,14 @@ module div #(
     wire  q1_c = q1_r;
     wire  q_sign_c = q_sign_r;
 
-    // lookahead
-    wire [7:0] r8_next2;          // r8 from post-step rem/c
-    wire [5:0] r6_next2;
-    wire [1:0] qd_next2;
+    // predicts the next iteration's qsel digit one cycle ahead so
+    // the qsel lookup is off the critical path
+    wire [7:0] r8_next2;          // 8-bit prediction window from post-step rem+c
+    wire [5:0] r6_next2;          // truncated form fed to qsel
+    wire [1:0] qd_next2;          // predicted digit magnitude (0/1/2)
     wire q0_next2 = qd_next2[0];
     wire q1_next2 = qd_next2[1];
-    wire q_sign_next2 = r6_next2[5] & (q1_next2 | q0_next2);
+    wire q_sign_next2 = r6_next2[5] & (q1_next2 | q0_next2);  // negative-digit flag
 
     wire [7:0] r8_next1;
     wire [5:0] r6_next1;
@@ -116,9 +105,12 @@ module div #(
     wire [W-1:0] q_corr = quot_pre_r + {{(W-1){1'b0}}, r_overshoot_r};
     wire [W-1:0] r_mag_final = r_overshoot_r ? r_mag_r : r_unnorm_r;
 
+    // sign-correction bits
+    logic negate_r, negate_q;
+    wire negate_r_c = sign_x & x[W-1];
+    wire negate_q_c = negate_r_c ^ (sign_y & y[W-1]);
+
     // outputs
-    wire negate_r = sign_x & x[W-1];
-    wire negate_q = negate_r ^ (sign_y & y[W-1]);
     assign q = rxq[W-1:0];
     assign r = rxq[W2-1:W];
 
@@ -130,71 +122,86 @@ module div #(
     );
 
     // csa instances
-    csa_div #(W+3) csa1 (.sub(1'b0), .a(rxq[W2+1:W-1]), .b({3'b0, y_norm}), .cin({c[W+1:0], 1'b0}), .s(sa1), .cout(ca1));
-    csa_div #(W+3) css1 (.sub(1'b1), .a(rxq[W2+1:W-1]), .b({3'b0, y_norm}), .cin({c[W+1:0], 1'b0}), .s(ss1), .cout(cs1));
-    csa_div #(W+3) csa  (.sub(1'b0), .a(rxq[W2:W-2]), .b({3'b0, y_norm}), .cin({c[W:0], 2'b0}), .s(sa), .cout(ca));
-    csa_div #(W+3) css  (.sub(1'b1), .a(rxq[W2:W-2]), .b({3'b0, y_norm}), .cin({c[W:0], 2'b0}), .s(ss), .cout(cs));
-    csa_div #(W+3) csa2 (.sub(1'b0), .a(rxq[W2:W-2]), .b({2'b0, y_norm, 1'b0}), .cin({c[W:0], 2'b0}), .s(sa2), .cout(ca2));
-    csa_div #(W+3) css2 (.sub(1'b1), .a(rxq[W2:W-2]), .b({2'b0, y_norm, 1'b0}), .cin({c[W:0], 2'b0}), .s(ss2), .cout(cs2));
+    csa #(.W(W+3)) csa1 (.sub(1'b0), .a(rxq[W2+1:W-1]), .b({3'b0, y_norm}),       .cin({c[W+1:0], 1'b0}), .s(sa1), .cout(ca1));
+    csa #(.W(W+3)) css1 (.sub(1'b1), .a(rxq[W2+1:W-1]), .b({3'b0, y_norm}),       .cin({c[W+1:0], 1'b0}), .s(ss1), .cout(cs1));
+    csa #(.W(W+3)) csa_ (.sub(1'b0), .a(rxq[W2:W-2]),   .b({3'b0, y_norm}),       .cin({c[W:0],   2'b0}), .s(sa),  .cout(ca));
+    csa #(.W(W+3)) css_ (.sub(1'b1), .a(rxq[W2:W-2]),   .b({3'b0, y_norm}),       .cin({c[W:0],   2'b0}), .s(ss),  .cout(cs));
+    csa #(.W(W+3)) csa2 (.sub(1'b0), .a(rxq[W2:W-2]),   .b({2'b0, y_norm, 1'b0}), .cin({c[W:0],   2'b0}), .s(sa2), .cout(ca2));
+    csa #(.W(W+3)) css2 (.sub(1'b1), .a(rxq[W2:W-2]),   .b({2'b0, y_norm, 1'b0}), .cin({c[W:0],   2'b0}), .s(ss2), .cout(cs2));
 
-    // one-host mux
-    wire [2:0] digit = {q_sign, q1, q0};
+    // current and registered SRT4 digit. encoding: {q_sign, q1, q0}
+    //   000 = +0    001 = +1    010 = +2
+    //   101 = -1    110 = -2    others = unused
+    wire [2:0] digit   = {q_sign,   q1,   q0};
     wire [2:0] digit_r = {q_sign_r, q1_r, q0_r};
-    wire sel_000 = (digit_r == 3'b000);
-    wire sel_001 = (digit_r == 3'b001);
-    wire sel_010 = (digit_r == 3'b010);
-    wire sel_101 = (digit_r == 3'b101);
-    wire sel_110 = (digit_r == 3'b110);
-    wire sel_def = ~(sel_000|sel_001|sel_010|sel_101|sel_110);
 
-    // rxq next state
-    wire [W2+2:0] rxq_next_2 =
-        ({(W2+3){sel_000}} & {rxq[W2:0],       2'b00}) |
-        ({(W2+3){sel_001}} & {ss,  rxq[W-3:0], 2'b01}) |
-        ({(W2+3){sel_010}} & {ss2, rxq[W-3:0], 2'b10}) |
-        ({(W2+3){sel_101}} & {sa,  qn[W-3:0],  2'b11}) |
-        ({(W2+3){sel_110}} & {sa2, qn[W-3:0],  2'b10}) |
-        ({(W2+3){sel_def}} & rxq);
+    // 2-digit step
+    logic [W2+2:0] rxq_next_2;
+    logic [W+2:0] c_next_2;
+    logic [W-1:0] qn_next_2;
+    always_comb begin
+        unique case (digit_r)
+            3'b000: begin
+                rxq_next_2 = {rxq[W2:0],       2'b00};
+                c_next_2   = {c[W:0],          2'b00};
+                qn_next_2  = {qn[W-3:0],       2'b11};
+            end
+            3'b001: begin
+                rxq_next_2 = {ss,  rxq[W-3:0], 2'b01};
+                c_next_2   = cs;
+                qn_next_2  = {rxq[W-3:0],      2'b00};
+            end
+            3'b010: begin
+                rxq_next_2 = {ss2, rxq[W-3:0], 2'b10};
+                c_next_2   = cs2;
+                qn_next_2  = {rxq[W-3:0],      2'b01};
+            end
+            3'b101: begin
+                rxq_next_2 = {sa,  qn[W-3:0],  2'b11};
+                c_next_2   = ca;
+                qn_next_2  = {qn[W-3:0],       2'b10};
+            end
+            3'b110: begin
+                rxq_next_2 = {sa2, qn[W-3:0],  2'b10};
+                c_next_2   = ca2;
+                qn_next_2  = {qn[W-3:0],       2'b01};
+            end
+            default: begin
+                rxq_next_2 = rxq;
+                c_next_2   = c;
+                qn_next_2  = qn;
+            end
+        endcase
+    end
 
-    wire [W+2:0] c_next_2 =
-        ({(W+3){sel_000}} & {c[W:0],   2'b00}) |
-        ({(W+3){sel_001}} & cs)                |
-        ({(W+3){sel_010}} & cs2)               |
-        ({(W+3){sel_101}} & ca)                |
-        ({(W+3){sel_110}} & ca2)               |
-        ({(W+3){sel_def}} & c);
-
-    wire [W-1:0] qn_next_2 =
-        ({W{sel_000}} & {qn[W-3:0],  2'b11}) |
-        ({W{sel_001}} & {rxq[W-3:0], 2'b00}) |
-        ({W{sel_010}} & {rxq[W-3:0], 2'b01}) |
-        ({W{sel_101}} & {qn[W-3:0],  2'b10}) |
-        ({W{sel_110}} & {qn[W-3:0],  2'b01}) |
-        ({W{sel_def}} & qn);
-
-    // one-hot mux
-    wire sel1_000 = (digit_r == 3'b000);
-    wire sel1_sub = ((digit_r == 3'b001) | (digit_r == 3'b010));
-    wire sel1_add = ((digit_r == 3'b101) | (digit_r == 3'b110));
-    wire sel1_def = ~(sel1_000 | sel1_sub | sel1_add);
-
-    wire [W2+2:0] rxq_next_1 =
-        ({(W2+3){sel1_000}} & {rxq[W2+1:0],    1'b0})  |
-        ({(W2+3){sel1_sub}} & {ss1, rxq[W-2:0], 1'b1}) |
-        ({(W2+3){sel1_add}} & {sa1, qn[W-2:0],  1'b1}) |
-        ({(W2+3){sel1_def}} & rxq);
-
-    wire [W+2:0] c_next_1 =
-        ({(W+3){sel1_000}} & {c[W+1:0], 1'b0}) |
-        ({(W+3){sel1_sub}} & cs1) |
-        ({(W+3){sel1_add}} & ca1) |
-        ({(W+3){sel1_def}} & c);
-
-    wire [W-1:0] qn_next_1 =
-        ({W{sel1_000}} & {qn[W-2:0], 1'b0}) |
-        ({W{sel1_sub}} & {rxq[W-2:0], 1'b0}) |
-        ({W{sel1_add}} & {qn[W-2:0], 1'b0}) |
-        ({W{sel1_def}} & qn);
+    // 1-digit step
+    logic [W2+2:0] rxq_next_1;
+    logic [W+2:0] c_next_1;
+    logic [W-1:0] qn_next_1;
+    always_comb begin
+        unique case (digit_r)
+            3'b000: begin
+                rxq_next_1 = {rxq[W2+1:0],     1'b0};
+                c_next_1   = {c[W+1:0],        1'b0};
+                qn_next_1  = {qn[W-2:0],       1'b0};
+            end
+            3'b001, 3'b010: begin
+                rxq_next_1 = {ss1, rxq[W-2:0], 1'b1};
+                c_next_1   = cs1;
+                qn_next_1  = {rxq[W-2:0],      1'b0};
+            end
+            3'b101, 3'b110: begin
+                rxq_next_1 = {sa1, qn[W-2:0],  1'b1};
+                c_next_1   = ca1;
+                qn_next_1  = {qn[W-2:0],       1'b0};
+            end
+            default: begin
+                rxq_next_1 = rxq;
+                c_next_1   = c;
+                qn_next_1  = qn;
+            end
+        endcase
+    end
 
     // lookahead computation
     assign r8_next2 = rxq_next_2[W2:W2-7] + c_next_2[W:W-7];
@@ -208,19 +215,46 @@ module div #(
     assign r8_next1 = rxq_next_1[W2:W2-7] + c_next_1[W:W-7];
     assign r6_next1 = r8_next1[7:2];
     qsel u_qsel_next1 (
-        .r5 (r6_next1[5] ? ~r6_next1[4:0] : r6_next1[4:0]),
-        .y4 (y_norm[W-1:W-4]),
-        .q  (qd_next1)
+        .r5(r6_next1[5] ? ~r6_next1[4:0] : r6_next1[4:0]),
+        .y4(y_norm[W-1:W-4]),
+        .q(qd_next1)
     );
 
     // fsm logic
     logic [WL2-1:0] counter;
     typedef enum logic [3:0] {IDLE, START, RUN, CORRECT1, CORRECT2, CORRECT3, CORRECT4, DONE} State;
-    State state;
+    State state, next_state;
 
-    always_ff @(posedge clk) begin : FSM
+    assign busy = (state != IDLE);
+    assign done = (state == DONE);
+
+    // y=0 and |y|=1 are handled with single-cycle shortcuts
+    wire run_done    = (counter == WL2'(W/2 + (W%2)));
+    wire div_zero    = (y == '0);
+    wire div_unit    = (y_eff == {{(W-1){1'b0}}, 1'b1});
+
+    always_comb begin
+        next_state = state;
+        unique case (state)
+            IDLE: if (start)      next_state = (div_zero | div_unit) ? DONE : START;
+            START:                next_state = RUN;
+            RUN:  if (run_done)   next_state = CORRECT1;
+            CORRECT1:             next_state = CORRECT2;
+            CORRECT2:             next_state = CORRECT3;
+            CORRECT3:             next_state = CORRECT4;
+            CORRECT4:             next_state = DONE;
+            DONE:                 next_state = IDLE;
+            default:              next_state = IDLE;
+        endcase
+    end
+
+    always_ff @(posedge clk) begin
+        if (reset) state <= IDLE;
+        else state <= next_state;
+    end
+
+    always_ff @(posedge clk) begin : datapath
         if (reset) begin
-            state <= IDLE;
             counter <= '0;
             rxq <= '0;
             c <= '0;
@@ -234,46 +268,34 @@ module div #(
             r_overshoot_r <= 1'b0;
             r_mag_r <= '0;
             quot_pre_r <= '0;
-            busy <= 1'b0;
-            done <= 1'b0;
-            div_zero <= 1'b0;
+            negate_r <= 1'b0;
+            negate_q <= 1'b0;
         end
 
         else begin
             case (state)
-                IDLE: begin
-                    busy <= 1'b0;
-                    done <= 1'b0;
+                IDLE: if (start) begin
+                    counter  <= '0;
+                    negate_r <= negate_r_c;
+                    negate_q <= negate_q_c;
 
-                    if (start) begin
-                        busy     <= 1'b1;
-                        div_zero <= 1'b0;
-                        counter  <= '0;
+                    if (div_zero) begin
+                        // RV32M divide-by-zero: DIV/DIVU -> -1 (all ones in
+                        // quotient slot), REM/REMU -> dividend (in remainder slot)
+                        rxq <= {3'b0, x, {W{1'b1}}};
+                    end
 
-                        if (y == '0) begin
-                            // RV32M divide-by-zero results:
-                            //   DIV/DIVU -> -1 (all-ones in quotient slot)
-                            //   REM/REMU -> dividend x (in remainder slot)
-                            rxq      <= {3'b0, x, {W{1'b1}}};
-                            div_zero <= 1'b1;
-                            state    <= DONE;
-                        end
+                    else if (div_unit) begin
+                        rxq[W-1:0]  <= negate_q_c ? -x_eff : x_eff;
+                        rxq[W2+2:W] <= '0;
+                    end
 
-                        else if (y_eff == {{(W-1){1'b0}}, 1'b1}) begin
-                            rxq[W-1:0]   <= negate_q ? -x_eff : x_eff;
-                            rxq[W2+2:W]  <= '0;
-                            state        <= DONE;
-                        end
-
-                        else begin
-                            // Action 5: written once, stable through START+RUN.
-                            shift_y <= shift_yc;
-                            y_norm  <= W'(y_eff << shift_yc);
-                            rxq     <= (W2+3)'(x_eff << shift_yc);
-                            c       <= '0;
-                            qn      <= '0;
-                            state   <= START;
-                        end
+                    else begin
+                        shift_y <= shift_yc;
+                        y_norm  <= W'(y_eff << shift_yc);
+                        rxq     <= (W2+3)'(x_eff << shift_yc);
+                        c       <= '0;
+                        qn      <= '0;
                     end
                 end
 
@@ -281,13 +303,11 @@ module div #(
                     q0_r <= q0;
                     q1_r <= q1;
                     q_sign_r <= q_sign;
-                    state <= RUN;
                 end
 
                 RUN: begin
-                    if (counter == WL2'(W/2 + (W%2))) begin
+                    if (run_done) begin
                         counter <= '0;
-                        state <= CORRECT1;
                     end
 
                     // 1-digit step
@@ -313,37 +333,25 @@ module div #(
                     end
                 end
 
-                // correction states
                 CORRECT1: begin
                     pr_r <= pr;
                     pr_corr_r <= pr_corr;
-                    state <= CORRECT2;
                 end
 
-                CORRECT2: begin
-                    r_unnorm_r <= r_unnorm;
-                    state <= CORRECT3;
-                end
+                CORRECT2: r_unnorm_r <= r_unnorm;
 
                 CORRECT3: begin
                     r_overshoot_r <= r_overshoot_c;
                     r_mag_r <= r_mag_c;
                     quot_pre_r <= quot_pre_c;
-                    state <= CORRECT4;
                 end
 
                 CORRECT4: begin
-                    rxq[W-1:0] <= negate_q ? -q_corr : q_corr;
+                    rxq[W-1:0]  <= negate_q ? -q_corr : q_corr;
                     rxq[W2-1:W] <= (negate_r && r_mag_final != '0) ? -r_mag_final : r_mag_final;
-                    done <= 1'b1;
-                    state <= DONE;
                 end
 
-                DONE: begin
-                    busy <= 1'b0;
-                    done <= 1'b1;
-                    state <= IDLE;
-                end
+                default: ;
             endcase
         end
     end

@@ -7,8 +7,7 @@ module mdu (
     input logic valid_in,
     output logic busy,
     output logic valid_out,
-    output logic div_zero,
-    
+
     // params
     input logic [31:0] x, y,
     input mdu_op_t select,
@@ -31,7 +30,7 @@ module mdu (
 
     // div datapath
     logic [31:0] div_q, div_r;
-    logic div_busy_raw, div_done, div_zero_raw;
+    logic div_busy_raw, div_done;
 
     // fsm
     typedef enum logic [1:0] { IDLE, MUL_WAIT, DIV_WAIT } state_t;
@@ -59,8 +58,7 @@ module mdu (
         .sign_y(div_sign_y),
         .x(x), .y(y), .q(div_q), .r(div_r),
         .busy(div_busy_raw),
-        .done(div_done),
-        .div_zero(div_zero_raw)
+        .done(div_done)
     );
 
     logic is_rem_q;
@@ -71,7 +69,6 @@ module mdu (
         if (reset) begin
             state <= IDLE;
             valid_out <= 1'b0;
-            div_zero <= 1'b0;
             result_q <= '0;
             is_rem_q <= 1'b0;
             use_high_q <= 1'b0;
@@ -101,7 +98,6 @@ module mdu (
                     if (div_done) begin
                         result_q <= is_rem_q ? div_r : div_q;
                         valid_out <= 1'b1;
-                        div_zero <= div_zero_raw;
                         state <= IDLE;
                     end
                 end
