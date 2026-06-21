@@ -50,6 +50,13 @@ package riscv_pkg;
         BR_BGEU = 3'h7
     } branch_t;
 
+    // funct3[1:0]
+    typedef enum logic [1:0] {
+        CSR_RW = 2'b01,
+        CSR_RS = 2'b10,
+        CSR_RC = 2'b11
+    } csr_op_t;
+
     typedef enum logic [6:0] {
         OP_REG    = 7'b0110011,
         OP_IMM    = 7'b0010011,
