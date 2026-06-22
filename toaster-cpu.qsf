@@ -67,7 +67,6 @@ set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME bwall_multiplier_tb -sect
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name EDA_TEST_BENCH_NAME func_tb -section_id eda_simulation
 set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id func_tb
 set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME func_tb -section_id func_tb
@@ -87,6 +86,7 @@ set_global_assignment -name SYSTEMVERILOG_FILE src/units/adder/cla4.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/units/divider/div.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/units/multiplier/mul.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/units/unit_pkg.sv
+set_global_assignment -name SYSTEMVERILOG_FILE src/units/csa.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/units/mdu.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/units/alu.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/units/divider/qsel.sv
@@ -106,4 +106,11 @@ set_global_assignment -name SYSTEMVERILOG_FILE src/pipeline/datapath.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/pipeline/control.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/regfile.sv
 set_global_assignment -name SYSTEMVERILOG_FILE src/memory.sv
+set_global_assignment -name SYSTEMVERILOG_FILE src/csr.sv
+set_global_assignment -name SYSTEMVERILOG_FILE testbenches/csr_tb.sv
+set_global_assignment -name EDA_TEST_BENCH_NAME csr_tb -section_id eda_simulation
+set_global_assignment -name EDA_DESIGN_INSTANCE_NAME NA -section_id csr_tb
+set_global_assignment -name EDA_TEST_BENCH_MODULE_NAME csr_tb -section_id csr_tb
+set_global_assignment -name EDA_TEST_BENCH_FILE testbenches/csr_tb.sv -section_id csr_tb
 set_global_assignment -name SOURCE_FILE "db/toaster-cpu.cmp.rdb"
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

@@ -25,7 +25,11 @@ module control (
 
     // extensions
     output mdu_op_t mdu_op,
-    output logic mdu_en
+    output logic mdu_en,
+
+    // csr
+    output csr_op_t csr_op,
+    output logic csr_en
 );
     // rest of logic
     opcode_t opcode;
@@ -39,11 +43,13 @@ module control (
     assign br_type = branch_t'(funct3);
 
     // immediate formats
-    wire [31:0] imm_i = {{20{ir[31]}}, ir[31:20]};
-    wire [31:0] imm_s = {{20{ir[31]}}, ir[31:25], ir[11:7]};
-    wire [31:0] imm_b = {{19{ir[31]}}, ir[31], ir[7], ir[30:25], ir[11:8], 1'b0};
-    wire [31:0] imm_u = {ir[31:12], 12'b0};
-    wire [31:0] imm_j = {{11{ir[31]}}, ir[31], ir[19:12], ir[20], ir[30:21], 1'b0};
+    wire [31:0] imm_i  = {{20{ir[31]}}, ir[31:20]};
+    wire [31:0] imm_s  = {{20{ir[31]}}, ir[31:25], ir[11:7]};
+    wire [31:0] imm_b  = {{19{ir[31]}}, ir[31], ir[7], ir[30:25], ir[11:8], 1'b0};
+    wire [31:0] imm_u  = {ir[31:12], 12'b0};
+    wire [31:0] imm_j  = {{11{ir[31]}}, ir[31], ir[19:12], ir[20], ir[30:21], 1'b0};
+    wire [31:0] imm_is = {{20{ir[31]}}, ir[31:20]};
+    wire [31:0] imm_iu = {20'd0, ir[31:20]};
 
     always_comb begin
         // assign reg sources
@@ -64,6 +70,9 @@ module control (
 
         mdu_op = mdu_op_t'(funct3);
         mdu_en = 0;
+
+        csr_op = csr_op_t'(funct3[1:0]);
+        csr_en = 0;
 
         case (opcode)
             OP_REG: begin
@@ -126,6 +135,13 @@ module control (
                 use_imm = 1;
                 use_pc = 1;
                 rf_en = 1;
+            end
+
+            OP_SYSTEM: begin
+                imm = imm_iu;
+                use_imm = funct3[2];
+                rf_en = 1;
+                csr_en = (funct3 != 3'b000);
             end
 
             default: ;

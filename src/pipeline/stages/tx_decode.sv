@@ -40,7 +40,11 @@ module tx_decode (
 
         // extensions
         .mdu_op(dec.mdu_op),
-        .mdu_en(dec.mdu_en)
+        .mdu_en(dec.mdu_en),
+
+        // csr
+        .csr_op(dec.csr_op),
+        .csr_en(dec.csr_en)
     );
 
     // assign stuff
@@ -54,7 +58,8 @@ module tx_decode (
             id_ex.alu_op <= ALU_ADD;
             id_ex.br_type <= BR_NONE;
             id_ex.mdu_op <= MDU_MUL;
-        end 
+            id_ex.csr_op <= CSR_RW;
+        end
         
         else if (!stall) begin
             id_ex <= dec;

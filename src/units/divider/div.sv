@@ -280,8 +280,9 @@ module div #(
                     negate_q <= negate_q_c;
 
                     if (div_zero) begin
-                        // RV32M divide-by-zero: DIV/DIVU -> -1 (all ones in
-                        // quotient slot), REM/REMU -> dividend (in remainder slot)
+                        // RV32M divide-by-zero: 
+                        // DIV/DIVU -> -1 (in quotient slot)
+                        // REM/REMU -> dividend (in remainder slot)
                         rxq <= {3'b0, x, {W{1'b1}}};
                     end
 
