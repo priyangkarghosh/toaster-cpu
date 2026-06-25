@@ -44,7 +44,10 @@ module tx_decode (
 
         // csr
         .csr_op(dec.csr_op),
-        .csr_en(dec.csr_en)
+        .csr_en(dec.csr_en),
+        .mret_en(dec.mret_en),
+        .ecall_en(dec.ecall_en),
+        .ebreak_en(dec.ebreak_en)
     );
 
     // assign stuff
@@ -67,6 +70,7 @@ module tx_decode (
             id_ex.pc_next <= pc_next;
             id_ex.rr1 <= rf_rr1;
             id_ex.rr2 <= rf_rr2;
+            id_ex.ir <= if_id.ir;
         end
     end
 endmodule

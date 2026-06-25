@@ -29,7 +29,10 @@ module control (
 
     // csr
     output csr_op_t csr_op,
-    output logic csr_en
+    output logic csr_en,
+    output logic mret_en,
+    output logic ecall_en,
+    output logic ebreak_en
 );
     // rest of logic
     opcode_t opcode;
@@ -73,6 +76,9 @@ module control (
 
         csr_op = csr_op_t'(funct3[1:0]);
         csr_en = 0;
+        mret_en = 0;
+        ecall_en = 0;
+        ebreak_en = 0;
 
         case (opcode)
             OP_REG: begin
@@ -141,7 +147,10 @@ module control (
                 imm = imm_iu;
                 use_imm = funct3[2];
                 rf_en = 1;
-                csr_en = (funct3 != 3'b000);
+                csr_en    = (funct3 != 3'b000);
+                mret_en   = (funct3 == 3'b000) && (imm_iu == 32'h302);
+                ecall_en  = (funct3 == 3'b000) && (imm_iu == 32'h000);
+                ebreak_en = (funct3 == 3'b000) && (imm_iu == 32'h001);
             end
 
             default: ;

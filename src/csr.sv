@@ -14,6 +14,15 @@ module csr (
     output logic [31:0] csr_rdata,
     output logic        csr_illegal,
 
+    // trap entry
+    input logic trap_en,
+    input logic [31:0] trap_pc,
+    input logic [31:0] trap_cause,
+    input logic [31:0] trap_tval,
+
+    // mret
+    input logic mret_en,
+
     // interrupt-pending wires
     input logic irq_msi,
     input logic irq_mti,
@@ -24,7 +33,11 @@ module csr (
     output logic [31:0] mtvec_o,
     output logic [31:0] mepc_o,
     output logic [31:0] mie_o,
-    output logic [31:0] mip_o
+    output logic [31:0] mip_o,
+
+    // interrupt-taken (priority-encoded mei > msi > mti)
+    output logic take_irq,
+    output logic [31:0] irq_cause
 );
     // addresses
     localparam logic [11:0] CSR_MVENDORID = 12'hF11;
@@ -62,6 +75,15 @@ module csr (
 
     // mip is fully combinational from external irq wires, writes no-op
     wire [31:0] mip_w = {20'd0, irq_mei, 3'd0, irq_mti, 3'd0, irq_msi, 3'd0};
+
+    // interrupt-taken
+    wire mei_pend = mip_w[11] & mie_q[11];
+    wire msi_pend = mip_w[3]  & mie_q[3];
+    wire mti_pend = mip_w[7]  & mie_q[7];
+    assign take_irq  = (mei_pend | msi_pend | mti_pend) & mstatus_q[3];
+    assign irq_cause = mei_pend ? 32'h8000_000B :
+                       msi_pend ? 32'h8000_0003 :
+                                  32'h8000_0007;
 
     // reads
     logic addr_valid;
@@ -113,8 +135,19 @@ module csr (
             mepc_q     <= '0;
             mcause_q   <= '0;
             mtval_q    <= '0;
-        end 
-        
+        end
+
+        else if (trap_en) begin
+            mepc_q    <= trap_pc & MEPC_WMASK;
+            mcause_q  <= trap_cause;
+            mtval_q   <= trap_tval;
+            mstatus_q <= {mstatus_q[31:8], mstatus_q[3], 7'd0};
+        end
+
+        else if (mret_en) begin
+            mstatus_q <= {mstatus_q[31:8], 1'b1, 3'd0, mstatus_q[7], 3'd0};
+        end
+
         else if (write_ok) begin
             unique case (csr_addr)
                 CSR_MSTATUS:  mstatus_q  <= (mstatus_q & ~MSTATUS_WMASK) | (csr_new & MSTATUS_WMASK);

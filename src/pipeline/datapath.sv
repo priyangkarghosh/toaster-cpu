@@ -12,13 +12,19 @@ module datapath (
     output logic [31:0] d_addr,
     input  logic [31:0] d_rdata,
     output logic [31:0] d_wdata,
-    output mem_width_t d_width
+    output mem_width_t d_width,
+
+    // m-mode interrupt-pending wires
+    input logic irq_msi,
+    input logic irq_mti,
+    input logic irq_mei
 );
     // control wiring
     logic stall, flush, bubble, exec_busy;
 
     // pc
     logic pc_en;
+    logic trap_en;
     logic [31:0] pc;
     logic [31:0] pc_target;
     always_ff @(posedge clk) begin
@@ -59,8 +65,8 @@ module datapath (
     // hazard wiring
     wire load_use = ex_ma.load_en & (id_ex.rs1 == ex_ma.rd || id_ex.rs2 == ex_ma.rd);
     assign stall = load_use | exec_busy;
-    assign flush = pc_en & !load_use; // CHECK BEHAVIOUR OF BRANCH AFTER LOAD
-    assign bubble = stall & ~flush;
+    assign flush = (pc_en & !load_use) | trap_en;
+    assign bubble = (stall & ~flush) | trap_en;
 
     // forwarding
     logic [31:0] fwd_rr1, fwd_rr2;
@@ -107,10 +113,14 @@ module datapath (
         .load_use(load_use),
         .exec_busy(exec_busy),
         .id_ex(id_ex),
-        .fwd_rr1(fwd_rr1), 
+        .fwd_rr1(fwd_rr1),
         .fwd_rr2(fwd_rr2),
+        .irq_msi(irq_msi),
+        .irq_mti(irq_mti),
+        .irq_mei(irq_mei),
         .pc_target(pc_target),
         .pc_en(pc_en),
+        .trap_en(trap_en),
         .ex_ma(ex_ma)
     );
 
