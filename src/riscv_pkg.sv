@@ -77,7 +77,8 @@ package riscv_pkg;
  
     // id -> ex
     typedef struct packed {
-        logic [31:0] pc, pc_next, imm, rr1, rr2, ir;
+        logic valid;
+        logic [31:0] pc, imm, rr1, rr2, ir;
         logic [4:0] rs1, rs2, rd;
         alu_op_t alu_op;
         mem_width_t mem_width;

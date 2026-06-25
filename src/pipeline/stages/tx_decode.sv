@@ -10,9 +10,6 @@ module tx_decode (
     input [31:0] rf_rr1,
     input [31:0] rf_rr2,
 
-    // from pc
-    input [31:0] pc_next,
-
     // to regfile
     output [4:0] rf_rs1,
     output [4:0] rf_rs2,
@@ -68,7 +65,6 @@ module tx_decode (
         else if (!stall) begin
             id_ex <= dec;
             id_ex.pc <= if_id.pc;
-            id_ex.pc_next <= pc_next;
             id_ex.rr1 <= rf_rr1;
             id_ex.rr2 <= rf_rr2;
             id_ex.ir <= if_id.ir;

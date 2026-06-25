@@ -93,15 +93,14 @@ module datapath (
     );
 
     tx_decode u_decode (
-        .clk(clk), 
-        .reset(reset), 
-        .stall(stall), 
+        .clk(clk),
+        .reset(reset),
+        .stall(stall),
         .flush(flush),
         .if_id(if_id),
-        .rf_rr1(rf_rr1), 
+        .rf_rr1(rf_rr1),
         .rf_rr2(rf_rr2),
-        .pc_next(pc),
-        .rf_rs1(rf_rs1), 
+        .rf_rs1(rf_rs1),
         .rf_rs2(rf_rs2),
         .id_ex(id_ex)
     );

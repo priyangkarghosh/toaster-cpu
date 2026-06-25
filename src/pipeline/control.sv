@@ -46,13 +46,12 @@ module control (
     assign br_type = branch_t'(funct3);
 
     // immediate formats
-    wire [31:0] imm_i  = {{20{ir[31]}}, ir[31:20]};
+    wire [31:0] imm_is = {{20{ir[31]}}, ir[31:20]};
+    wire [31:0] imm_iu = {20'd0, ir[31:20]};
     wire [31:0] imm_s  = {{20{ir[31]}}, ir[31:25], ir[11:7]};
     wire [31:0] imm_b  = {{19{ir[31]}}, ir[31], ir[7], ir[30:25], ir[11:8], 1'b0};
     wire [31:0] imm_u  = {ir[31:12], 12'b0};
     wire [31:0] imm_j  = {{11{ir[31]}}, ir[31], ir[19:12], ir[20], ir[30:21], 1'b0};
-    wire [31:0] imm_is = {{20{ir[31]}}, ir[31:20]};
-    wire [31:0] imm_iu = {20'd0, ir[31:20]};
 
     always_comb begin
         // assign reg sources
@@ -89,13 +88,13 @@ module control (
 
             OP_IMM: begin
                 alu_op = alu_op_t'({(funct7 == FUNCT7_ALT) & (funct3 == 3'b101), funct3});
-                imm = imm_i;
+                imm = imm_is;
                 use_imm = 1;
                 rf_en = 1;
             end
 
             OP_LOAD: begin
-                imm = imm_i;
+                imm = imm_is;
                 use_imm = 1;
                 rf_en = 1;
                 load_en = 1;
@@ -123,7 +122,7 @@ module control (
             end
 
             OP_JALR: begin
-                imm = imm_i;
+                imm = imm_is;
                 use_imm = 1;
                 rf_en = 1;
                 jal_en = 1;
@@ -148,9 +147,9 @@ module control (
                 use_imm = funct3[2];
                 rf_en = 1;
                 csr_en    = (funct3 != 3'b000);
-                mret_en   = (funct3 == 3'b000) && (imm_iu == 32'h302);
-                ecall_en  = (funct3 == 3'b000) && (imm_iu == 32'h000);
-                ebreak_en = (funct3 == 3'b000) && (imm_iu == 32'h001);
+                mret_en   = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h302);
+                ecall_en  = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h000);
+                ebreak_en = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h001);
             end
 
             default: ;

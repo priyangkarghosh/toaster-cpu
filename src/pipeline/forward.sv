@@ -10,10 +10,13 @@ module forward (
     output logic [31:0] fwd_rr1,
     output logic [31:0] fwd_rr2
 );
-    // x0 writes are suppressed by the regfile, so they must not be forwarded
-    assign fwd_rr1 = (ex_ma.rf_en && ex_ma.rd != 0 && ex_rs1 == ex_ma.rd) ? ex_ma.data :
-                     (ma_wb.rf_en && ma_wb.rd != 0 && ex_rs1 == ma_wb.rd) ? ma_wb.data : ex_rr1;
+    assign fwd_rr1 = (ex_rs1 == 0)                                ? 32'd0      :
+                     (ex_ma.rf_en && ex_rs1 == ex_ma.rd)          ? ex_ma.data :
+                     (ma_wb.rf_en && ex_rs1 == ma_wb.rd)          ? ma_wb.data :
+                                                                    ex_rr1;
 
-    assign fwd_rr2 = (ex_ma.rf_en && ex_ma.rd != 0 && ex_rs2 == ex_ma.rd) ? ex_ma.data :
-                     (ma_wb.rf_en && ma_wb.rd != 0 && ex_rs2 == ma_wb.rd) ? ma_wb.data : ex_rr2;
+    assign fwd_rr2 = (ex_rs2 == 0)                                ? 32'd0      :
+                     (ex_ma.rf_en && ex_rs2 == ex_ma.rd)          ? ex_ma.data :
+                     (ma_wb.rf_en && ex_rs2 == ma_wb.rd)          ? ma_wb.data :
+                                                                    ex_rr2;
 endmodule

@@ -116,12 +116,12 @@ module tx_exec (
     wire [31:0] mtvec_base = {mtvec_w[31:2], 2'b00};
     wire [31:0] vec_offset = (irq_taken & ~exc_pending & mtvec_w[0]) ? {26'd0, irq_cause[3:0], 2'b00} : 32'd0;
 
-    // suppress branches/jumps while MDU is mid-operation; trap > mret > branch
-    assign pc_en = ((id_ex.jal_en | (id_ex.branch_en & cond_ff)) & ~mdu_busy) | trap_en | id_ex.mret_en;
+    // trap > mret > branch
+    assign pc_en = id_ex.jal_en | (id_ex.branch_en & cond_ff) | trap_en | id_ex.mret_en;
     assign pc_target = trap_en ? (mtvec_base + vec_offset) :
                        id_ex.mret_en ? mepc_w :
                        {alu_out[31:1], 1'b0};
-    wire [31:0] exec = id_ex.jal_en ? id_ex.pc_next :
+    wire [31:0] exec = id_ex.jal_en ? id_ex.pc + 32'd4 :
                        id_ex.mdu_en ? mdu_out :
                        id_ex.csr_en ? csr_rdata :
                        alu_out;
