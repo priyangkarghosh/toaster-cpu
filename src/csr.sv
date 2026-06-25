@@ -36,7 +36,7 @@ module csr (
     output logic [31:0] mip_o,
 
     // interrupt-taken (priority-encoded mei > msi > mti)
-    output logic take_irq,
+    output logic irq_en,
     output logic [31:0] irq_cause
 );
     // addresses
@@ -80,7 +80,7 @@ module csr (
     wire mei_pend = mip_w[11] & mie_q[11];
     wire msi_pend = mip_w[3]  & mie_q[3];
     wire mti_pend = mip_w[7]  & mie_q[7];
-    assign take_irq  = (mei_pend | msi_pend | mti_pend) & mstatus_q[3];
+    assign irq_en    = (mei_pend | msi_pend | mti_pend) & mstatus_q[3];
     assign irq_cause = mei_pend ? 32'h8000_000B :
                        msi_pend ? 32'h8000_0003 :
                                   32'h8000_0007;

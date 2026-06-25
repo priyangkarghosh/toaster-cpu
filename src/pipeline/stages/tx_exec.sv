@@ -37,7 +37,6 @@ module tx_exec (
         .z(alu_out)
     );
 
-
     // wire mdu
     logic [31:0] mdu_out;
     logic mdu_busy, mdu_valid_out;
@@ -68,23 +67,23 @@ module tx_exec (
     );
     
     // wire csr
-    logic csr_illegal, take_irq;
+    logic csr_illegal, irq_en;
     logic [31:0] csr_rdata, mtvec_w, mepc_w, irq_cause;
     wire [31:0] csr_wdata = id_ex.use_imm ? {27'd0, id_ex.rs1} : fwd_rr1;
     wire csr_wmask = (id_ex.csr_op == CSR_RW) || (id_ex.rs1 != 5'd0);
 
     // only take irq when EX holds a real instruction
-    wire id_ex_valid = id_ex.rf_en | id_ex.store_en | id_ex.branch_en | id_ex.jal_en | id_ex.mret_en | id_ex.csr_en | id_ex.load_en | id_ex.ecall_en | id_ex.ebreak_en;
-    wire take_irq_q = take_irq & id_ex_valid;
+    wire irq_taken = irq_en & id_ex.valid;
 
     // sync exceptions: csr_illegal > ebreak > ecall. interrupts deferred behind them
     wire exc_pending = csr_illegal | id_ex.ebreak_en | id_ex.ecall_en;
-    wire [31:0] exc_cause = csr_illegal     ? 32'd2  :
-                            id_ex.ebreak_en ? 32'd3  :
-                                              32'd11;
+    wire [31:0] exc_cause = csr_illegal ? 32'd2 :
+                            id_ex.ebreak_en ? 32'd3 :
+                            32'd11;
+    
     wire [31:0] trap_cause_w = exc_pending ? exc_cause : irq_cause;
-    wire [31:0] trap_tval_w  = csr_illegal ? id_ex.ir : 32'd0;
-    assign trap_en = exc_pending | take_irq_q;
+    wire [31:0] trap_tval_w = csr_illegal ? id_ex.ir : 32'd0;
+    assign trap_en = exc_pending | irq_taken;
 
     csr inst_csr (
         .clk(clk),
@@ -109,13 +108,13 @@ module tx_exec (
         .mepc_o(mepc_w),
         .mie_o(),
         .mip_o(),
-        .take_irq(take_irq),
+        .irq_en(irq_en),
         .irq_cause(irq_cause)
     );
 
     // vectored mtvec: only interrupts get an offset; exceptions always to base
     wire [31:0] mtvec_base = {mtvec_w[31:2], 2'b00};
-    wire [31:0] vec_offset = (take_irq_q & ~exc_pending & mtvec_w[0]) ? {26'd0, irq_cause[3:0], 2'b00} : 32'd0;
+    wire [31:0] vec_offset = (irq_taken & ~exc_pending & mtvec_w[0]) ? {26'd0, irq_cause[3:0], 2'b00} : 32'd0;
 
     // suppress branches/jumps while MDU is mid-operation; trap > mret > branch
     assign pc_en = ((id_ex.jal_en | (id_ex.branch_en & cond_ff)) & ~mdu_busy) | trap_en | id_ex.mret_en;

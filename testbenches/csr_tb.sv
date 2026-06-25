@@ -22,7 +22,7 @@ logic [31:0] trap_pc, trap_cause, trap_tval;
 logic        mret_en;
 
 logic [31:0] mstatus_o, mtvec_o, mepc_o, mie_o, mip_o;
-logic        take_irq;
+logic        irq_en;
 logic [31:0] irq_cause;
 
 logic passed;
@@ -54,7 +54,7 @@ csr dut (
     .mepc_o     (mepc_o),
     .mie_o      (mie_o),
     .mip_o      (mip_o),
-    .take_irq   (take_irq),
+    .irq_en     (irq_en),
     .irq_cause  (irq_cause)
 );
 
@@ -127,14 +127,14 @@ endtask
 // sample combinational irq outputs after irq lines / mie / mstatus stabilize
 task automatic check_irq(input logic exp_take, input logic [31:0] exp_cause, input string name);
     @(negedge clk);
-    if (take_irq !== exp_take) begin
+    if (irq_en !== exp_take) begin
         passed = 1'b0;
-        $display("FAIL [%s] take_irq=%b exp=%b", name, take_irq, exp_take);
+        $display("FAIL [%s] irq_en=%b exp=%b", name, irq_en, exp_take);
     end else if (exp_take && irq_cause !== exp_cause) begin
         passed = 1'b0;
         $display("FAIL [%s] cause=%h exp=%h", name, irq_cause, exp_cause);
     end else begin
-        $display("PASS [%s] take=%b cause=%h", name, take_irq, irq_cause);
+        $display("PASS [%s] irq_en=%b cause=%h", name, irq_en, irq_cause);
     end
 endtask
 
@@ -364,8 +364,8 @@ initial begin
     do_mret();
     peek(A_MSTATUS, 32'h0000_1880, "mret from 0/0: MIE=0 MPIE=1");
 
-    // take_irq priority + gating
-    $display("\n-- take_irq gating + priority --");
+    // irq_en priority + gating
+    $display("\n-- irq_en gating + priority --");
     do_csr(CSR_RW, A_MSTATUS, 32'h0000_0000, 1'b1);   // clear MIE
     do_csr(CSR_RW, A_MIE,     32'h0000_0888, 1'b1);   // enable all 3
     irq_msi = 1; irq_mti = 1; irq_mei = 1;

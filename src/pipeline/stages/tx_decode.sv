@@ -53,6 +53,7 @@ module tx_decode (
     // assign stuff
     assign rf_rs1 = dec.rs1;
     assign rf_rs2 = dec.rs2;
+    assign dec.valid = 1'b1; // if an instruction is decoded, it MUST be valid
 
     // latch stage registers
     always_ff @(posedge clk) begin
