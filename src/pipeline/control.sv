@@ -146,9 +146,9 @@ module control (
                 imm = imm_iu;
                 use_imm = funct3[2];
                 rf_en = 1;
-                csr_en    = (funct3 != 3'b000);
-                mret_en   = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h302);
-                ecall_en  = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h000);
+                csr_en = (funct3 != 3'b000);
+                mret_en = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h302);
+                ecall_en = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h000);
                 ebreak_en = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h001);
             end
 

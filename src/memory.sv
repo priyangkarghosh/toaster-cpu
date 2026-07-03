@@ -5,7 +5,7 @@ module memory #(
     parameter W = 32,
     parameter CAPACITY = 512  // words
 )(
-    input clk,
+    input clk, reset,
 
     // instruction port
     input [W-1:0] i_addr,
@@ -24,16 +24,38 @@ module memory #(
 
     // reads always return the full word
     assign i_data = mem[i_widx];
-    assign c_rsp.rdata = mem[d_widx];
-    assign c_rsp.ack = c_req.valid;
 
-    // writes use per-byte enables from c_req.be
+    // fsm
+    enum logic { IDLE, RESPOND } state;
     always_ff @(posedge clk) begin
-        if (c_req.valid & c_req.write) begin
-            if (c_req.be[0]) mem[d_widx][7:0]   <= c_req.wdata[7:0];
-            if (c_req.be[1]) mem[d_widx][15:8]  <= c_req.wdata[15:8];
-            if (c_req.be[2]) mem[d_widx][23:16] <= c_req.wdata[23:16];
-            if (c_req.be[3]) mem[d_widx][31:24] <= c_req.wdata[31:24];
+        if (reset) begin
+            state <= IDLE;
+            c_rsp.ack <= 0;
+        end
+
+        else begin
+            case (state)
+                IDLE: begin
+                    if (c_req.valid) begin
+                        state <= RESPOND;
+                        c_rsp.ack <= 1;
+
+                        // action
+                        c_rsp.rdata <= mem[d_widx];
+                        if (c_req.write) begin
+                            if (c_req.be[0]) mem[d_widx][7:0] <= c_req.wdata[7:0];
+                            if (c_req.be[1]) mem[d_widx][15:8] <= c_req.wdata[15:8];
+                            if (c_req.be[2]) mem[d_widx][23:16] <= c_req.wdata[23:16];
+                            if (c_req.be[3]) mem[d_widx][31:24] <= c_req.wdata[31:24];
+                        end
+                    end
+                end
+
+                RESPOND: begin
+                    state <= IDLE;
+                    c_rsp.ack <= 0;
+                end
+            endcase
         end
     end
 endmodule

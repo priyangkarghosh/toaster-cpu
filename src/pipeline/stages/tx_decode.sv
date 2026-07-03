@@ -1,7 +1,7 @@
 import riscv_pkg::*;
 
 module tx_decode (
-    input clk, reset, stall, flush,
+    input clk, reset, en, bubble,
 
     // from fetch
     input if_id_t if_id,
@@ -54,15 +54,15 @@ module tx_decode (
 
     // latch stage registers
     always_ff @(posedge clk) begin
-        if (reset || flush) begin
+        if (reset || bubble) begin
             id_ex <= '0;
             id_ex.alu_op <= ALU_ADD;
             id_ex.br_type <= BR_NONE;
             id_ex.mdu_op <= MDU_MUL;
             id_ex.csr_op <= CSR_RW;
         end
-        
-        else if (!stall) begin
+
+        else if (en) begin
             id_ex <= dec;
             id_ex.pc <= if_id.pc;
             id_ex.rr1 <= rf_rr1;

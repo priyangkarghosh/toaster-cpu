@@ -35,6 +35,7 @@ module toaster_cpu #(
         .CAPACITY(CAPACITY)
     ) u_mem (
         .clk(clk),
+        .reset(reset),
         .i_addr(i_addr),
         .i_data(i_data),
         .c_req(c_req[0]),

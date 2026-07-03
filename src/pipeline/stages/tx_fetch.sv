@@ -1,7 +1,7 @@
 import riscv_pkg::*;
 
 module tx_fetch (
-    input clk, reset, stall, flush,
+    input clk, reset, en, bubble,
 
     input [31:0] pc_in,
     input [31:0] inst_in,
@@ -9,12 +9,12 @@ module tx_fetch (
 );
     // latch stage registers
     always_ff @(posedge clk) begin
-        if (reset | flush) begin
+        if (reset | bubble) begin
             if_id <= 0;
             if_id.ir <= 32'h13; // nop
-        end 
+        end
 
-        else if (!stall) begin
+        else if (en) begin
             if_id.pc <= pc_in;
             if_id.ir <= inst_in;
         end
