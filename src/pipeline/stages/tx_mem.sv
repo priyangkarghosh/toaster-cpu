@@ -23,11 +23,11 @@ module tx_mem (
     logic [3:0] be;
     logic [31:0] wdata;
     always_comb begin
-        be    = 4'b0000;
+        be = '0;
         wdata = '0;
         case (ex_ma.mem_width)
             MW_WORD: begin
-                be    = 4'b1111;
+                be = 4'b1111;
                 wdata = ex_ma.rr2;
             end
             MW_HALF, MW_HALFU: case (boff)
@@ -44,14 +44,6 @@ module tx_mem (
             default: ;
         endcase
     end
-
-    assign o_req.valid = ex_ma.load_en | ex_ma.store_en;
-    assign o_req.write = ex_ma.store_en;
-    assign o_req.addr = ex_ma.data;
-    assign o_req.wdata = wdata;
-    assign o_req.be = be;
-
-    assign ma_busy = o_req.valid & !o_rsp.ack;
 
     // extract byte/half lane from returned word, sign/zero-ext per mem_width
     logic [31:0] rdata;
@@ -84,6 +76,15 @@ module tx_mem (
         endcase
     end
 
+    // set response data
+    assign o_req.valid = ex_ma.load_en | ex_ma.store_en;
+    assign o_req.write = ex_ma.store_en;
+    assign o_req.addr = ex_ma.data;
+    assign o_req.wdata = wdata;
+    assign o_req.be = be;
+
+    // set busy flag
+    assign ma_busy = o_req.valid & !o_rsp.ack; // only busy during r/w
     always_ff @(posedge clk) begin
         if (reset | bubble) begin
             ma_wb <= '0;

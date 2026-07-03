@@ -43,8 +43,8 @@ module datapath (
     wire id_ex_bubble = flush;
     wire ex_ma_en = ~ma_stall;
     wire ex_ma_bubble = (ex_stall & ~ma_stall) | trap_en;
-    wire ma_wb_en = 1'b1;
-    wire ma_wb_bubble = ma_stall;
+    wire ma_wb_en = ~ma_stall;
+    wire ma_wb_bubble = '0;
 
     // pc
     logic [31:0] pc;

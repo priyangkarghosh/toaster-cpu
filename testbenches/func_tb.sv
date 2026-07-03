@@ -1,5 +1,6 @@
 `timescale 1ns/1ps
 import riscv_pkg::*;
+import tbus_pkg::*;
 
 // ====================================================================
 // func_tb — self-checking functional testbench for the 5-stage core.
@@ -29,18 +30,14 @@ module func_tb;
     // dut ports
     // ----------------------------------------------------------------
     logic [31:0] i_addr, i_data;
-    logic        d_write;
-    logic [31:0] d_addr, d_wdata;
-    logic [31:0] d_rdata;
-    mem_width_t  d_width;
-    logic        irq_msi, irq_mti, irq_mei;
+    req_t o_req;
+    rsp_t o_rsp;
+    logic irq_msi, irq_mti, irq_mei;
 
     datapath dut (
         .clk    (clk),     .reset  (reset),
         .i_addr (i_addr),  .i_data (i_data),
-        .d_write(d_write), .d_addr (d_addr),
-        .d_rdata(d_rdata), .d_wdata(d_wdata),
-        .d_width(d_width),
+        .o_req  (o_req),   .o_rsp  (o_rsp),
         .irq_msi(irq_msi), .irq_mti(irq_mti), .irq_mei(irq_mei)
     );
 
@@ -52,76 +49,50 @@ module func_tb;
     assign i_data = imem[i_addr[31:2]];
 
     // ----------------------------------------------------------------
-    // data memory — mirrors memory.sv: byte/half/word access with
-    // sign or zero extension on loads, masked subword writes on stores.
-    // d_rdata is sign-extended at the memory boundary because the
-    // datapath itself doesn't do any width handling on load data.
+    // data memory — word array behind the tbus handshake. subword lane
+    // handling (be encode, extract, sign/zero-extend) now lives in
+    // tx_mem, so the model is byte-enabled word writes + word reads.
+    // ack arrives after 1 + [0..EXTRA_WAIT_MAX] random cycles so every
+    // mem op stresses the pipeline against variable bus latency.
     // ----------------------------------------------------------------
     localparam int DMEM_WORDS = 4096;
+    localparam int EXTRA_WAIT_MAX = 2;
     logic [31:0] dmem [0:DMEM_WORDS-1];
-
-    wire [31:0] dword = dmem[d_addr[31:2]];
-    wire [1:0]  dboff = d_addr[1:0];
-
-    always_comb begin
-        case (d_width)
-            MW_BYTE: case (dboff)
-                2'd0: d_rdata = {{24{dword[7]}},  dword[7:0]};
-                2'd1: d_rdata = {{24{dword[15]}}, dword[15:8]};
-                2'd2: d_rdata = {{24{dword[23]}}, dword[23:16]};
-                2'd3: d_rdata = {{24{dword[31]}}, dword[31:24]};
-                default: d_rdata = '0;
-            endcase
-            MW_HALF: case (dboff)
-                2'd0:    d_rdata = {{16{dword[15]}}, dword[15:0]};
-                2'd2:    d_rdata = {{16{dword[31]}}, dword[31:16]};
-                default: d_rdata = '0;
-            endcase
-            MW_BYTEU: case (dboff)
-                2'd0: d_rdata = {24'b0, dword[7:0]};
-                2'd1: d_rdata = {24'b0, dword[15:8]};
-                2'd2: d_rdata = {24'b0, dword[23:16]};
-                2'd3: d_rdata = {24'b0, dword[31:24]};
-                default: d_rdata = '0;
-            endcase
-            MW_HALFU: case (dboff)
-                2'd0:    d_rdata = {16'b0, dword[15:0]};
-                2'd2:    d_rdata = {16'b0, dword[31:16]};
-                default: d_rdata = '0;
-            endcase
-            MW_WORD: d_rdata = dword;
-            default: d_rdata = '0;
-        endcase
-    end
 
     // magic mmio: handler stores to this addr to drop all pending irq lines
     // (stand-in for an iohub claim/ack register until that block is wired up)
     localparam [31:0] IRQ_CLR_ADDR = 32'h1000_0000;
-    always_ff @(posedge clk) begin
-        if (d_write && d_addr == IRQ_CLR_ADDR) begin
-            irq_msi <= 1'b0;
-            irq_mti <= 1'b0;
-            irq_mei <= 1'b0;
-        end
-    end
+
+    wire [11:0] d_widx = o_req.addr[13:2];
+    int wait_q;
 
     always_ff @(posedge clk) begin
-        if (d_write) begin
-            case (d_width)
-                MW_BYTE: case (dboff)
-                    2'd0: dmem[d_addr[31:2]][7:0]   <= d_wdata[7:0];
-                    2'd1: dmem[d_addr[31:2]][15:8]  <= d_wdata[7:0];
-                    2'd2: dmem[d_addr[31:2]][23:16] <= d_wdata[7:0];
-                    2'd3: dmem[d_addr[31:2]][31:24] <= d_wdata[7:0];
-                endcase
-                MW_HALF: case (dboff)
-                    2'd0:    dmem[d_addr[31:2]][15:0]  <= d_wdata[15:0];
-                    2'd2:    dmem[d_addr[31:2]][31:16] <= d_wdata[15:0];
-                    default: ; // misaligned: drop
-                endcase
-                MW_WORD: dmem[d_addr[31:2]] <= d_wdata;
-                default: ; // ignore funky widths for stores
-            endcase
+        if (reset) begin
+            o_rsp  <= '0;
+            wait_q <= 0;
+        end else if (o_rsp.ack) begin
+            // blind cycle: originator is still showing the acked request
+            o_rsp.ack <= 1'b0;
+            wait_q    <= $urandom_range(EXTRA_WAIT_MAX);
+        end else if (o_req.valid) begin
+            if (wait_q == 0) begin
+                o_rsp.ack   <= 1'b1;
+                o_rsp.rdata <= dmem[d_widx];
+                if (o_req.write) begin
+                    if (o_req.addr == IRQ_CLR_ADDR) begin
+                        irq_msi <= 1'b0;
+                        irq_mti <= 1'b0;
+                        irq_mei <= 1'b0;
+                    end else begin
+                        if (o_req.be[0]) dmem[d_widx][7:0]   <= o_req.wdata[7:0];
+                        if (o_req.be[1]) dmem[d_widx][15:8]  <= o_req.wdata[15:8];
+                        if (o_req.be[2]) dmem[d_widx][23:16] <= o_req.wdata[23:16];
+                        if (o_req.be[3]) dmem[d_widx][31:24] <= o_req.wdata[31:24];
+                    end
+                end
+            end else begin
+                wait_q <= wait_q - 1;
+            end
         end
     end
 
