@@ -1,18 +1,16 @@
 import riscv_pkg::*;
+import tbus_pkg::*;
 
 module datapath (
     input clk, reset,
-    
+
     // instruction port
     output logic [31:0] i_addr,
     input logic [31:0] i_data,
 
-    // data port
-    output logic d_write,
-    output logic [31:0] d_addr,
-    input  logic [31:0] d_rdata,
-    output logic [31:0] d_wdata,
-    output mem_width_t d_width,
+    // data port (tbus master)
+    output req_t m_req,
+    input  rsp_t m_rsp,
 
     // m-mode interrupt-pending wires
     input logic irq_msi,
@@ -124,14 +122,11 @@ module datapath (
     );
 
     tx_mem u_mem (
-        .clk(clk), 
+        .clk(clk),
         .reset(reset),
         .ex_ma(ex_ma),
-        .d_addr(d_addr),
-        .d_rdata(d_rdata),
-        .d_wdata(d_wdata),
-        .d_width(d_width),
-        .d_write(d_write),
+        .m_req(m_req),
+        .m_rsp(m_rsp),
         .ma_wb(ma_wb)
     );
 
