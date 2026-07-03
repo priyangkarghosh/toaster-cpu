@@ -46,11 +46,11 @@ module datapath_tb;
                 dut.u_core.u_exec.alu_x,
                 dut.u_core.u_exec.alu_y,
                 dut.u_core.u_exec.alu_out);
-            if (dut.u_core.m_req.valid & dut.u_core.m_req.write)
+            if (dut.u_core.o_req.valid & dut.u_core.o_req.write)
                 $display("[STORE] addr=0x%08h  data=0x%08h  be=%b",
-                    dut.u_core.m_req.addr,
-                    dut.u_core.m_req.wdata,
-                    dut.u_core.m_req.be);
+                    dut.u_core.o_req.addr,
+                    dut.u_core.o_req.wdata,
+                    dut.u_core.o_req.be);
         end
     end
 

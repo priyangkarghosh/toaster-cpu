@@ -1,5 +1,5 @@
 package tbus_pkg;
-    // master -> slave
+    // originator -> completer
     typedef struct packed {
         logic valid;
         logic write;
@@ -8,7 +8,7 @@ package tbus_pkg;
         logic [3:0] be;
     } req_t;
 
-    // slave -> master
+    // completer -> originator
     typedef struct packed {
         logic ack;
         logic [31:0] rdata;

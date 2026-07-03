@@ -8,9 +8,9 @@ module datapath (
     output logic [31:0] i_addr,
     input logic [31:0] i_data,
 
-    // data port (tbus master)
-    output req_t m_req,
-    input  rsp_t m_rsp,
+    // data port (tbus originator)
+    output req_t o_req,
+    input  rsp_t o_rsp,
 
     // m-mode interrupt-pending wires
     input logic irq_msi,
@@ -125,8 +125,8 @@ module datapath (
         .clk(clk),
         .reset(reset),
         .ex_ma(ex_ma),
-        .m_req(m_req),
-        .m_rsp(m_rsp),
+        .o_req(o_req),
+        .o_rsp(o_rsp),
         .ma_wb(ma_wb)
     );
 

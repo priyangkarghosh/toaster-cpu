@@ -8,8 +8,8 @@ module tx_mem (
     input ex_ma_t ex_ma,
 
     // data memory port
-    output req_t m_req,
-    input  rsp_t m_rsp,
+    output req_t o_req,
+    input  rsp_t o_rsp,
 
     // outputs to next stage
     output ma_wb_t ma_wb
@@ -42,39 +42,39 @@ module tx_mem (
         endcase
     end
 
-    assign m_req.valid = ex_ma.load_en | ex_ma.store_en;
-    assign m_req.write = ex_ma.store_en;
-    assign m_req.addr  = ex_ma.data;
-    assign m_req.wdata = wdata;
-    assign m_req.be    = be;
+    assign o_req.valid = ex_ma.load_en | ex_ma.store_en;
+    assign o_req.write = ex_ma.store_en;
+    assign o_req.addr  = ex_ma.data;
+    assign o_req.wdata = wdata;
+    assign o_req.be    = be;
 
     // extract byte/half lane from returned word, sign/zero-ext per mem_width
     logic [31:0] rdata;
     always_comb begin
         case (ex_ma.mem_width)
             MW_BYTE: case (boff)
-                2'd0: rdata = {{24{m_rsp.rdata[7]}},  m_rsp.rdata[7:0]};
-                2'd1: rdata = {{24{m_rsp.rdata[15]}}, m_rsp.rdata[15:8]};
-                2'd2: rdata = {{24{m_rsp.rdata[23]}}, m_rsp.rdata[23:16]};
-                2'd3: rdata = {{24{m_rsp.rdata[31]}}, m_rsp.rdata[31:24]};
+                2'd0: rdata = {{24{o_rsp.rdata[7]}},  o_rsp.rdata[7:0]};
+                2'd1: rdata = {{24{o_rsp.rdata[15]}}, o_rsp.rdata[15:8]};
+                2'd2: rdata = {{24{o_rsp.rdata[23]}}, o_rsp.rdata[23:16]};
+                2'd3: rdata = {{24{o_rsp.rdata[31]}}, o_rsp.rdata[31:24]};
             endcase
             MW_BYTEU: case (boff)
-                2'd0: rdata = {24'b0, m_rsp.rdata[7:0]};
-                2'd1: rdata = {24'b0, m_rsp.rdata[15:8]};
-                2'd2: rdata = {24'b0, m_rsp.rdata[23:16]};
-                2'd3: rdata = {24'b0, m_rsp.rdata[31:24]};
+                2'd0: rdata = {24'b0, o_rsp.rdata[7:0]};
+                2'd1: rdata = {24'b0, o_rsp.rdata[15:8]};
+                2'd2: rdata = {24'b0, o_rsp.rdata[23:16]};
+                2'd3: rdata = {24'b0, o_rsp.rdata[31:24]};
             endcase
             MW_HALF: case (boff)
-                2'd0: rdata = {{16{m_rsp.rdata[15]}}, m_rsp.rdata[15:0]};
-                2'd2: rdata = {{16{m_rsp.rdata[31]}}, m_rsp.rdata[31:16]};
+                2'd0: rdata = {{16{o_rsp.rdata[15]}}, o_rsp.rdata[15:0]};
+                2'd2: rdata = {{16{o_rsp.rdata[31]}}, o_rsp.rdata[31:16]};
                 default: rdata = '0; // misaligned
             endcase
             MW_HALFU: case (boff)
-                2'd0: rdata = {16'b0, m_rsp.rdata[15:0]};
-                2'd2: rdata = {16'b0, m_rsp.rdata[31:16]};
+                2'd0: rdata = {16'b0, o_rsp.rdata[15:0]};
+                2'd2: rdata = {16'b0, o_rsp.rdata[31:16]};
                 default: rdata = '0;
             endcase
-            MW_WORD: rdata = m_rsp.rdata;
+            MW_WORD: rdata = o_rsp.rdata;
             default: rdata = '0;
         endcase
     end
