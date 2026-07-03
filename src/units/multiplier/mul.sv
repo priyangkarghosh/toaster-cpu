@@ -65,9 +65,7 @@ module mul (
         end
     endgenerate
 
-    // ------------------------------------------------------------------
     // stage 1: latch the 17 shifted partial products + correction vector
-    // ------------------------------------------------------------------
     logic s1_valid;
     logic [WW-1:0] s1 [0:N_PP];  // [0..16] = partial products, [17] = corr vec
     always_ff @(posedge clk) begin
@@ -79,9 +77,7 @@ module mul (
         end
     end
 
-    // ------------------------------------------------------------------
     // wallace layer 1: 18 inputs -> 6 (s,c) pairs
-    // ------------------------------------------------------------------
     logic [WW-1:0] l1_s [0:5], l1_c [0:5];
     generate
         for (g = 0; g < 6; g = g + 1) begin : gen_l1
@@ -96,9 +92,7 @@ module mul (
         end
     endgenerate
 
-    // ------------------------------------------------------------------
     // wallace layer 2: 12 inputs (6 s,c pairs interleaved) -> 4 (s,c) pairs
-    // ------------------------------------------------------------------
     logic [WW-1:0] l1_out [0:11];
     generate
         for (g = 0; g < 6; g = g + 1) begin : gen_l1_flat
@@ -121,9 +115,7 @@ module mul (
         end
     endgenerate
 
-    // ------------------------------------------------------------------
     // stage 2 register: 8 vectors out of layer 2
-    // ------------------------------------------------------------------
     logic s2_valid;
     logic [WW-1:0] s2 [0:7];  // [s7, c7, s8, c8, s9, c9, s10, c10]
     always_ff @(posedge clk) begin
@@ -137,9 +129,7 @@ module mul (
         end
     end
 
-    // ------------------------------------------------------------------
     // wallace layer 3: 8 inputs -> 2 (s,c) pairs + 2 pass-through
-    // ------------------------------------------------------------------
     logic [WW-1:0] l3_s [0:1], l3_c [0:1];
     generate
         for (g = 0; g < 2; g = g + 1) begin : gen_l3
@@ -154,10 +144,8 @@ module mul (
         end
     endgenerate
 
-    // ------------------------------------------------------------------
     // wallace layer 4: layer-3 outputs (4) + 2 stage-2 pass-throughs (s2[6..7])
     // -> 2 (s,c) pairs
-    // ------------------------------------------------------------------
     logic [WW-1:0] l34_out [0:5];
     assign l34_out[0] = l3_s[0];
     assign l34_out[1] = l3_c[0];
@@ -180,9 +168,7 @@ module mul (
         end
     endgenerate
 
-    // ------------------------------------------------------------------
     // stage 3 register: 4 vectors out of layer 4
-    // ------------------------------------------------------------------
     logic s3_valid;
     logic [WW-1:0] s3 [0:3];  // [s13, c13, s14, c14]
     always_ff @(posedge clk) begin
@@ -194,16 +180,12 @@ module mul (
         end
     end
 
-    // ------------------------------------------------------------------
     // wallace layers 5 + 6: 4 -> 2
-    // ------------------------------------------------------------------
     logic [WW-1:0] l5_s, l5_c, l6_s, l6_c;
     csa #(.W(WW)) u_l5 (.sub(1'b0), .a(s3[0]), .b(s3[1]), .cin(s3[2]), .s(l5_s), .cout(l5_c));
     csa #(.W(WW)) u_l6 (.sub(1'b0), .a(l5_s),  .b(l5_c),  .cin(s3[3]), .s(l6_s), .cout(l6_c));
 
-    // ------------------------------------------------------------------
     // stage 4 register: final (s, c) pair feeding the CPA
-    // ------------------------------------------------------------------
     logic s4_valid;
     logic [WW-1:0] s4_s, s4_c;
     always_ff @(posedge clk) begin
@@ -215,9 +197,7 @@ module mul (
         end
     end
 
-    // ------------------------------------------------------------------
     // stage 5: carry-propagate add into the final 64-bit product
-    // ------------------------------------------------------------------
     wire [63:0] sum = s4_s[63:0] + s4_c[63:0];
     always_ff @(posedge clk) begin
         if (reset) valid_out <= 1'b0;
