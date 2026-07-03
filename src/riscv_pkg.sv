@@ -70,14 +70,33 @@ package riscv_pkg;
         OP_SYSTEM = 7'b1110011
     } opcode_t;
 
+    // mcause[3:0] exception codes
+    typedef enum logic [3:0] {
+        EXC_IADDR_MISALIGNED = 4'd0,
+        EXC_ILLEGAL          = 4'd2,
+        EXC_EBREAK           = 4'd3,
+        EXC_LADDR_MISALIGNED = 4'd4,
+        EXC_SADDR_MISALIGNED = 4'd6,
+        EXC_ECALL_M          = 4'd11
+    } exc_cause_t;
+
+    // exception
+    typedef struct packed {
+        logic valid;
+        exc_cause_t cause;
+        logic [31:0] tval;
+    } exc_t;
+
     // if -> id
     typedef struct packed {
+        logic valid;
         logic [31:0] pc, ir;
     } if_id_t;
- 
+
     // id -> ex
     typedef struct packed {
         logic valid;
+        exc_t exc;
         logic [31:0] pc, imm, rr1, rr2, ir;
         logic [4:0] rs1, rs2, rd;
         alu_op_t alu_op;
@@ -100,12 +119,13 @@ package riscv_pkg;
         csr_op_t csr_op;
         logic csr_en;
         logic mret_en;
-        logic ecall_en;
-        logic ebreak_en;
     } id_ex_t;
- 
+
     // ex -> ma
     typedef struct packed {
+        logic valid;
+        exc_t exc;
+        logic [31:0] pc;
         logic [31:0] data;
         logic [31:0] rr2;
         logic [4:0] rd;

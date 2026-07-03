@@ -3,6 +3,9 @@ import riscv_pkg::*;
 module control (
     input logic [31:0] ir,
 
+    // decode-detected exception tag
+    output exc_t exc,
+
     // register addresses
     output logic [4:0] rs1,
     output logic [4:0] rs2,
@@ -30,9 +33,7 @@ module control (
     // csr
     output csr_op_t csr_op,
     output logic csr_en,
-    output logic mret_en,
-    output logic ecall_en,
-    output logic ebreak_en
+    output logic mret_en
 );
     // rest of logic
     opcode_t opcode;
@@ -54,6 +55,8 @@ module control (
     wire [31:0] imm_j  = {{11{ir[31]}}, ir[31], ir[19:12], ir[20], ir[30:21], 1'b0};
 
     always_comb begin
+        exc = '0;
+
         // assign reg sources
         rs1 = ir[19:15];
         rs2 = ir[24:20];
@@ -76,8 +79,6 @@ module control (
         csr_op = csr_op_t'(funct3[1:0]);
         csr_en = 0;
         mret_en = 0;
-        ecall_en = 0;
-        ebreak_en = 0;
 
         case (opcode)
             OP_REG: begin
@@ -148,11 +149,15 @@ module control (
                 rf_en = 1;
                 csr_en = (funct3 != 3'b000);
                 mret_en = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h302);
-                ecall_en = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h000);
-                ebreak_en = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h001);
+                exc.valid = (funct3 == 3'b000) && ((imm_iu[11:0] == 12'h000) || (imm_iu[11:0] == 12'h001));
+                exc.cause = (imm_iu[11:0] == 12'h001) ? EXC_EBREAK : EXC_ECALL_M;
             end
 
-            default: ;
+            default: begin
+                exc.valid = 1;
+                exc.cause = EXC_ILLEGAL;
+                exc.tval = ir;
+            end
         endcase
     end
 endmodule

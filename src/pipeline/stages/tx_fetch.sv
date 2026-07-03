@@ -15,6 +15,7 @@ module tx_fetch (
         end
 
         else if (en) begin
+            if_id.valid <= 1'b1;
             if_id.pc <= pc_in;
             if_id.ir <= inst_in;
         end

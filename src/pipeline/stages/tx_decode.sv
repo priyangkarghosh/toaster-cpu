@@ -19,6 +19,7 @@ module tx_decode (
 );
     id_ex_t dec;
     control u_ctl (
+        .exc(dec.exc),
         .ir(if_id.ir),
         .rs1(dec.rs1), 
         .rs2(dec.rs2), 
@@ -42,15 +43,12 @@ module tx_decode (
         // csr
         .csr_op(dec.csr_op),
         .csr_en(dec.csr_en),
-        .mret_en(dec.mret_en),
-        .ecall_en(dec.ecall_en),
-        .ebreak_en(dec.ebreak_en)
+        .mret_en(dec.mret_en)
     );
 
     // assign stuff
     assign rf_rs1 = dec.rs1;
     assign rf_rs2 = dec.rs2;
-    assign dec.valid = 1'b1; // if an instruction is decoded, it MUST be valid
 
     // latch stage registers
     always_ff @(posedge clk) begin
@@ -64,6 +62,7 @@ module tx_decode (
 
         else if (en) begin
             id_ex <= dec;
+            id_ex.valid <= if_id.valid;
             id_ex.pc <= if_id.pc;
             id_ex.rr1 <= rf_rr1;
             id_ex.rr2 <= rf_rr2;

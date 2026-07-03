@@ -4,9 +4,6 @@ import tbus_pkg::*;
 module tx_mem (
     input clk, reset, en, bubble,
 
-    // output signals
-    output ma_busy,
-
     // inputs from prev stage
     input ex_ma_t ex_ma,
 
@@ -14,6 +11,9 @@ module tx_mem (
     output req_t o_req,
     input rsp_t o_rsp,
 
+    // output signals
+    output ma_busy,
+    
     // outputs to next stage
     output ma_wb_t ma_wb
 );

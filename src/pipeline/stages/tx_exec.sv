@@ -75,17 +75,17 @@ module tx_exec (
     logic [31:0] irq_cause;
     wire irq_taken = irq_en & id_ex.valid;
 
-    // sync exceptions: csr_illegal > ebreak > ecall; interrupts deferred behind them
+    // fold EX-detected csr_illegal into the incoming exc tag
     logic csr_illegal;
-    wire exc_pending = csr_illegal | id_ex.ebreak_en | id_ex.ecall_en;
-    wire [31:0] exc_cause = csr_illegal ? 32'd2 :
-                            id_ex.ebreak_en ? 32'd3 :
-                            32'd11;
+    exc_t ex_exc;
+    assign ex_exc.valid = id_ex.exc.valid | csr_illegal;
+    assign ex_exc.cause = id_ex.exc.valid ? id_ex.exc.cause : EXC_ILLEGAL;
+    assign ex_exc.tval  = id_ex.exc.valid ? id_ex.exc.tval  : id_ex.ir;
 
-    wire [31:0] trap_cause_w = exc_pending ? exc_cause : irq_cause;
-    wire [31:0] trap_tval_w = csr_illegal ? id_ex.ir : 32'd0;
+    wire [31:0] trap_cause_w = ex_exc.valid ? {28'd0, ex_exc.cause} : irq_cause;
+    wire [31:0] trap_tval_w = ex_exc.valid ? ex_exc.tval : 32'd0;
     // en not ex_commit: traps may fire during a load-use stall, never mid-bus-transaction
-    assign trap_en = (exc_pending | irq_taken) & en;
+    assign trap_en = (ex_exc.valid | irq_taken) & en;
 
     logic [31:0] csr_rdata, mtvec_w, mepc_w;
     csr u_csr (
@@ -117,7 +117,7 @@ module tx_exec (
 
     // vectored mtvec: only interrupts get an offset; exceptions always to base
     wire [31:0] mtvec_base = {mtvec_w[31:2], 2'b00};
-    wire [31:0] vec_offset = (irq_taken & ~exc_pending & mtvec_w[0]) ? {26'd0, irq_cause[3:0], 2'b00} : 32'd0;
+    wire [31:0] vec_offset = (irq_taken & ~ex_exc.valid & mtvec_w[0]) ? {26'd0, irq_cause[3:0], 2'b00} : 32'd0;
 
     // trap > mret > branch
     assign pc_en = ((id_ex.jal_en | (id_ex.branch_en & cond_ff) | id_ex.mret_en) & ex_commit) | trap_en;
@@ -137,6 +137,9 @@ module tx_exec (
         end
 
         else if (en) begin
+            ex_ma.valid <= id_ex.valid;
+            ex_ma.exc <= ex_exc;
+            ex_ma.pc <= id_ex.pc;
             ex_ma.mem_width <= id_ex.mem_width;
             ex_ma.data <= exec;
             ex_ma.rr2 <= fwd_rr2;
