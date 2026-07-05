@@ -43,11 +43,8 @@ module div #(
     wire q1 = qd[1];
     wire q_sign = r6[5] & (q0 | q1);
 
-    // pipeline registers
+    // registered digit
     logic q0_r, q1_r, q_sign_r;
-    wire  q0_c = q0_r; // registered digit drives the mux
-    wire  q1_c = q1_r;
-    wire  q_sign_c = q_sign_r;
 
     // predicts the next iteration's qsel digit one cycle ahead so
     // the qsel lookup is off the critical path
@@ -129,10 +126,9 @@ module div #(
     csa #(.W(W+3)) csa2 (.sub(1'b0), .a(rxq[W2:W-2]),   .b({2'b0, y_norm, 1'b0}), .cin({c[W:0],   2'b0}), .s(sa2), .cout(ca2));
     csa #(.W(W+3)) css2 (.sub(1'b1), .a(rxq[W2:W-2]),   .b({2'b0, y_norm, 1'b0}), .cin({c[W:0],   2'b0}), .s(ss2), .cout(cs2));
 
-    // current and registered SRT4 digit. encoding: {q_sign, q1, q0}
+    // registered SRT4 digit. encoding: {q_sign, q1, q0}
     //   000 = +0    001 = +1    010 = +2
     //   101 = -1    110 = -2    others = unused
-    wire [2:0] digit   = {q_sign,   q1,   q0};
     wire [2:0] digit_r = {q_sign_r, q1_r, q0_r};
 
     // 2-digit step
@@ -229,16 +225,16 @@ module div #(
     assign done = (state == DONE);
 
     // y=0 and |y|=1 are handled with single-cycle shortcuts
-    wire run_done    = (counter == WL2'(W/2 + (W%2)));
-    wire div_zero    = (y == '0);
-    wire div_unit    = (y_eff == {{(W-1){1'b0}}, 1'b1});
+    wire conclude = (counter == WL2'(W/2 + (W%2) - 1)); // final step transitions straight to correction
+    wire div_zero = (y == '0);
+    wire div_unit = (y_eff == {{(W-1){1'b0}}, 1'b1});
 
     always_comb begin
         next_state = state;
         unique case (state)
             IDLE: if (start)      next_state = (div_zero | div_unit) ? DONE : START;
             START:                next_state = RUN;
-            RUN:  if (run_done)   next_state = CORRECT1;
+            RUN:  if (conclude)   next_state = CORRECT1;
             CORRECT1:             next_state = CORRECT2;
             CORRECT2:             next_state = CORRECT3;
             CORRECT3:             next_state = CORRECT4;
@@ -307,12 +303,8 @@ module div #(
                 end
 
                 RUN: begin
-                    if (run_done) begin
-                        counter <= '0;
-                    end
-
                     // 1-digit step
-                    else if ((W % 2 == 1) && (counter == WL2'(W/2))) begin
+                    if ((W % 2 == 1) && (counter == WL2'(W/2))) begin
                         rxq <= rxq_next_1;
                         c <= c_next_1;
                         qn <= qn_next_1;
