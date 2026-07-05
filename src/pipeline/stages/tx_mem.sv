@@ -11,6 +11,13 @@ module tx_mem (
     output req_t o_req,
     input rsp_t o_rsp,
 
+    // csr trap port + live status
+    output trap_t trap,
+    input csr_stat_t csr_stat,
+
+    // redirect (qualified by trap.en)
+    output logic [31:0] pc_target,
+
     // output signals
     output ma_busy,
     
@@ -19,65 +26,48 @@ module tx_mem (
 );
     wire [1:0] boff = ex_ma.data[1:0];
 
-    // encode be + lane-shifted wdata from mem_width + addr[1:0]
-    logic [3:0] be;
-    logic [31:0] wdata;
-    always_comb begin
-        be = '0;
-        wdata = '0;
-        case (ex_ma.mem_width)
-            MW_WORD: begin
-                be = 4'b1111;
-                wdata = ex_ma.rr2;
-            end
-            MW_HALF, MW_HALFU: case (boff)
-                2'd0: begin be = 4'b0011; wdata = {16'b0, ex_ma.rr2[15:0]}; end
-                2'd2: begin be = 4'b1100; wdata = {ex_ma.rr2[15:0], 16'b0}; end
-                default: ; // misaligned
-            endcase
-            MW_BYTE, MW_BYTEU: case (boff)
-                2'd0: begin be = 4'b0001; wdata = {24'b0, ex_ma.rr2[7:0]}; end
-                2'd1: begin be = 4'b0010; wdata = {16'b0, ex_ma.rr2[7:0], 8'b0}; end
-                2'd2: begin be = 4'b0100; wdata = {8'b0, ex_ma.rr2[7:0], 16'b0}; end
-                2'd3: begin be = 4'b1000; wdata = {ex_ma.rr2[7:0], 24'b0}; end
-            endcase
-            default: ;
-        endcase
-    end
+    // lane placement is a shift by 8*boff
+    wire is_word = (ex_ma.mem_width == MW_WORD);
+    wire is_half = (ex_ma.mem_width == MW_HALF) | (ex_ma.mem_width == MW_HALFU);
+    wire misaligned = is_word ? (boff != 2'd0) : (is_half & boff[0]); // no lanes until misaligned exc lands
 
-    // extract byte/half lane from returned word, sign/zero-ext per mem_width
+    // calculate byte enable
+    wire [3:0] base_be = is_word ? 4'b1111 : is_half ? 4'b0011 : 4'b0001;
+    wire [3:0] be = misaligned ? 4'd0 : base_be << boff;
+    wire [31:0] wdata = ex_ma.rr2 << {boff, 3'b000};
+
+    // extract lane by shifting down, sign/zero-ext per mem_width
     logic [31:0] rdata;
+    wire [31:0] shifted = o_rsp.rdata >> {boff, 3'b000};
     always_comb begin
         case (ex_ma.mem_width)
-            MW_BYTE: case (boff)
-                2'd0: rdata = {{24{o_rsp.rdata[7]}},  o_rsp.rdata[7:0]};
-                2'd1: rdata = {{24{o_rsp.rdata[15]}}, o_rsp.rdata[15:8]};
-                2'd2: rdata = {{24{o_rsp.rdata[23]}}, o_rsp.rdata[23:16]};
-                2'd3: rdata = {{24{o_rsp.rdata[31]}}, o_rsp.rdata[31:24]};
-            endcase
-            MW_BYTEU: case (boff)
-                2'd0: rdata = {24'b0, o_rsp.rdata[7:0]};
-                2'd1: rdata = {24'b0, o_rsp.rdata[15:8]};
-                2'd2: rdata = {24'b0, o_rsp.rdata[23:16]};
-                2'd3: rdata = {24'b0, o_rsp.rdata[31:24]};
-            endcase
-            MW_HALF: case (boff)
-                2'd0: rdata = {{16{o_rsp.rdata[15]}}, o_rsp.rdata[15:0]};
-                2'd2: rdata = {{16{o_rsp.rdata[31]}}, o_rsp.rdata[31:16]};
-                default: rdata = '0; // misaligned
-            endcase
-            MW_HALFU: case (boff)
-                2'd0: rdata = {16'b0, o_rsp.rdata[15:0]};
-                2'd2: rdata = {16'b0, o_rsp.rdata[31:16]};
-                default: rdata = '0;
-            endcase
-            MW_WORD: rdata = o_rsp.rdata;
-            default: rdata = '0;
+            MW_BYTE:  rdata = {{24{shifted[7]}}, shifted[7:0]};
+            MW_BYTEU: rdata = {24'b0, shifted[7:0]};
+            MW_HALF:  rdata = {{16{shifted[15]}}, shifted[15:0]};
+            MW_HALFU: rdata = {16'b0, shifted[15:0]};
+            MW_WORD:  rdata = o_rsp.rdata;
+            default:  rdata = '0;
         endcase
     end
 
-    // set response data
-    assign o_req.valid = ex_ma.load_en | ex_ma.store_en;
+    // trap commit point. irqs squash + re-execute this instruction, so skip
+    // ops whose side effects already fired (bus access, csr write, mret)
+    wire replay_safe = ~(ex_ma.load_en | ex_ma.store_en | ex_ma.csr_en | ex_ma.mret_en);
+    wire irq_taken = csr_stat.irq_en & ex_ma.valid & replay_safe;
+
+    // csr trap port
+    assign trap.en = ex_ma.exc.valid | irq_taken;
+    assign trap.pc = ex_ma.pc;
+    assign trap.cause = ex_ma.exc.valid ? {28'd0, ex_ma.exc.cause} : csr_stat.irq_cause;
+    assign trap.tval = ex_ma.exc.valid ? ex_ma.exc.tval : 32'd0;
+
+    // vectored mtvec offsets interrupts only; exceptions always go to base
+    wire [31:0] mtvec_base = {csr_stat.mtvec[31:2], 2'b00};
+    wire irq_vec = ~ex_ma.exc.valid & csr_stat.mtvec[0];
+    assign pc_target = irq_vec ? mtvec_base + {26'd0, csr_stat.irq_cause[3:0], 2'b00} : mtvec_base;
+
+    // set response data. a faulting load/store must never touch the bus
+    assign o_req.valid = (ex_ma.load_en | ex_ma.store_en) & ~ex_ma.exc.valid;
     assign o_req.write = ex_ma.store_en;
     assign o_req.addr = ex_ma.data;
     assign o_req.wdata = wdata;

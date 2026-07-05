@@ -8,7 +8,7 @@ module datapath (
     output logic [31:0] i_addr,
     input logic [31:0] i_data,
 
-    // data port (tbus originator)
+    // data port
     output req_t o_req,
     input rsp_t o_rsp,
 
@@ -23,28 +23,38 @@ module datapath (
     ex_ma_t ex_ma;
     ma_wb_t ma_wb;
 
-    // stage status + redirect wiring (driven by the stage instances below)
+    // stage status + redirect wiring
+    logic ex_pc_en;
+    logic [31:0] ex_pc_target, ma_pc_target;
     logic ex_busy, ma_busy;
-    logic pc_en, trap_en;
-    logic [31:0] pc_target;
+
+    // csr wiring
+    csr_req_t csr_req;
+    csr_rsp_t csr_rsp;
+    trap_t trap;
+    csr_stat_t csr_stat;
+
+    // redirect arbitration: ma trap outranks ex branch/jal/mret
+    wire pc_en = trap.en | ex_pc_en;
+    wire [31:0] pc_target = trap.en ? ma_pc_target : ex_pc_target;
 
     // hazard wiring
     wire load_use = ex_ma.load_en & (id_ex.rs1 == ex_ma.rd || id_ex.rs2 == ex_ma.rd);
-    wire flush = pc_en; // redirect kills wrong-path IF/ID (pc_en is pre-gated in exec)
+    wire flush = pc_en; // any redirect kills the wrong-path front end
 
     // stalls
     wire ma_stall = ma_busy; // bus transaction in flight
     wire ex_stall = load_use | ex_busy | ma_stall; // operands or unit not ready
 
-    // per-stage controls
+    // per-stage controls. a trap kills every instruction younger than the commit point
     wire if_id_en = ~ex_stall;
     wire if_id_bubble = flush;
     wire id_ex_en = ~ex_stall;
     wire id_ex_bubble = flush;
     wire ex_ma_en = ~ma_stall;
-    wire ex_ma_bubble = (ex_stall & ~ma_stall) | trap_en;
+    wire ex_ma_bubble = (ex_stall & ~ma_stall) | trap.en;
     wire ma_wb_en = ~ma_stall;
-    wire ma_wb_bubble = '0;
+    wire ma_wb_bubble = trap.en; // the trapping instruction must not write back
 
     // pc
     logic [31:0] pc;
@@ -73,6 +83,34 @@ module datapath (
         .rf_in(rf_in),
         .rf_rr1(rf_rr1),
         .rf_rr2(rf_rr2)
+    );
+
+    // csr file
+    csr u_csr (
+        .clk(clk),
+        .reset(reset),
+        .csr_en(csr_req.en),
+        .csr_op(csr_req.op),
+        .csr_addr(csr_req.addr),
+        .csr_wdata(csr_req.wdata),
+        .csr_wmask(csr_req.wmask),
+        .csr_rdata(csr_rsp.rdata),
+        .csr_illegal(csr_rsp.illegal),
+        .trap_en(trap.en),
+        .trap_pc(trap.pc),
+        .trap_cause(trap.cause),
+        .trap_tval(trap.tval),
+        .mret_en(csr_req.mret),
+        .irq_msi(irq_msi),
+        .irq_mti(irq_mti),
+        .irq_mei(irq_mei),
+        .mstatus_o(),
+        .mtvec_o(csr_stat.mtvec),
+        .mepc_o(csr_stat.mepc),
+        .mie_o(),
+        .mip_o(),
+        .irq_en(csr_stat.irq_en),
+        .irq_cause(csr_stat.irq_cause)
     );
 
     // forwarding
@@ -118,16 +156,16 @@ module datapath (
         .en(ex_ma_en),
         .bubble(ex_ma_bubble),
         .load_use(load_use),
+        .trap_en(trap.en),
         .ex_busy(ex_busy),
         .id_ex(id_ex),
         .fwd_rr1(fwd_rr1),
         .fwd_rr2(fwd_rr2),
-        .irq_msi(irq_msi),
-        .irq_mti(irq_mti),
-        .irq_mei(irq_mei),
-        .pc_target(pc_target),
-        .pc_en(pc_en),
-        .trap_en(trap_en),
+        .csr_req(csr_req),
+        .csr_rsp(csr_rsp),
+        .csr_stat(csr_stat),
+        .pc_target(ex_pc_target),
+        .pc_en(ex_pc_en),
         .ex_ma(ex_ma)
     );
 
@@ -140,6 +178,9 @@ module datapath (
         .ex_ma(ex_ma),
         .o_req(o_req),
         .o_rsp(o_rsp),
+        .trap(trap),
+        .csr_stat(csr_stat),
+        .pc_target(ma_pc_target),
         .ma_wb(ma_wb)
     );
 

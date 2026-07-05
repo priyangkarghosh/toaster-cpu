@@ -4,7 +4,7 @@ module control (
     input logic [31:0] ir,
 
     // decode-detected exception tag
-    output exc_t exc,
+    output exc_tag_t exc,
 
     // register addresses
     output logic [4:0] rs1,
@@ -156,7 +156,6 @@ module control (
             default: begin
                 exc.valid = 1;
                 exc.cause = EXC_ILLEGAL;
-                exc.tval = ir;
             end
         endcase
     end

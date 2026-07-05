@@ -80,12 +80,47 @@ package riscv_pkg;
         EXC_ECALL_M          = 4'd11
     } exc_cause_t;
 
-    // exception
+    // decode-detected exception claim; tval derived at ex
+    typedef struct packed {
+        logic valid;
+        exc_cause_t cause;
+    } exc_tag_t;
+
+    // resolved exception (ex onward)
     typedef struct packed {
         logic valid;
         exc_cause_t cause;
         logic [31:0] tval;
     } exc_t;
+
+    // ex -> csr op port
+    typedef struct packed {
+        logic en;
+        csr_op_t op;
+        logic [11:0] addr;
+        logic [31:0] wdata;
+        logic wmask;
+        logic mret;
+    } csr_req_t;
+
+    // csr -> ex op response
+    typedef struct packed {
+        logic [31:0] rdata;
+        logic illegal;
+    } csr_rsp_t;
+
+    // commit -> csr trap entry
+    typedef struct packed {
+        logic en;
+        logic [31:0] pc, cause, tval;
+    } trap_t;
+
+    // csr -> core live status
+    typedef struct packed {
+        logic irq_en;
+        logic [31:0] irq_cause;
+        logic [31:0] mtvec, mepc;
+    } csr_stat_t;
 
     // if -> id
     typedef struct packed {
@@ -96,7 +131,7 @@ package riscv_pkg;
     // id -> ex
     typedef struct packed {
         logic valid;
-        exc_t exc;
+        exc_tag_t exc;
         logic [31:0] pc, imm, rr1, rr2, ir;
         logic [4:0] rs1, rs2, rd;
         alu_op_t alu_op;
@@ -134,6 +169,8 @@ package riscv_pkg;
         logic rf_en;
         logic load_en;
         logic store_en;
+        logic csr_en;
+        logic mret_en;
     } ex_ma_t;
  
     // ma -> wb

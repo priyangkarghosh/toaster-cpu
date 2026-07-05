@@ -2,7 +2,7 @@ import tbus_pkg::*;
 import tbus_map_pkg::*;
 
 module toaster_cpu #(
-    parameter MEM_FILE = "",
+    parameter MEM_FILE = "..\\test.txt",
     parameter CAPACITY = 512  // words
 )(
     input logic clk, reset
