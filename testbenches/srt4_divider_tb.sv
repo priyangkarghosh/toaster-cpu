@@ -22,21 +22,21 @@ localparam PERIOD = 10;
 
 logic [W-1:0] x, y, q, r;
 logic         signed_in, start, clk, reset;
-logic         done, busy, div_zero;
+logic         done, busy;
 logic         passed;
 
 div #(.W(W)) dut (
     .clk       (clk),
     .reset     (reset),
     .start     (start),
-    .signed_in (signed_in),
+    .sign_x    (signed_in),
+    .sign_y    (signed_in),
     .x         (x),
     .y         (y),
     .q         (q),
     .r         (r),
     .busy      (busy),
-    .done      (done),
-    .div_zero  (div_zero)
+    .done      (done)
 );
 
 always #(PERIOD / 2) clk = ~clk;
@@ -84,12 +84,13 @@ task automatic run(
 
     // ---- Check ---------------------------------------------------------------
     if (expect_dz) begin
-        if (div_zero !== 1'b1) begin
+        // RV32M divide-by-zero: q = -1, r = dividend
+        if (q !== {W{1'b1}} || r !== xv) begin
             passed = 0;
-            $display("FAIL [%s]  div_zero not raised  x=%0d y=%0d  got div_zero=%b",
-                     name, xv, yv, div_zero);
+            $display("FAIL [%s]  div-by-zero  x=%0d  got q=%h r=%h  exp q=%h r=%h",
+                     name, xv, q, r, {W{1'b1}}, xv);
         end else
-            $display("PASS [%s]  div_zero raised  (x=%0d y=%0d)", name, xv, yv);
+            $display("PASS [%s]  div-by-zero => q=-1 r=dividend  (x=%0d)", name, xv);
     end else begin
         if (q !== eq || r !== er) begin
             passed = 0;
