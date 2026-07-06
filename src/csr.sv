@@ -35,9 +35,8 @@ module csr (
     output logic [31:0] mie_o,
     output logic [31:0] mip_o,
 
-    // interrupt-taken (priority-encoded mei > msi > mti)
-    output logic irq_en,
-    output logic [31:0] irq_cause
+    // interrupt claim (priority-encoded mei > msi > mti)
+    output irq_t irq_o
 );
     // addresses
     localparam logic [11:0] CSR_MVENDORID = 12'hF11;
@@ -76,14 +75,14 @@ module csr (
     // mip is fully combinational from external irq wires, writes no-op
     wire [31:0] mip_w = {20'd0, irq_mei, 3'd0, irq_mti, 3'd0, irq_msi, 3'd0};
 
-    // interrupt-taken
+    // interrupt claim
     wire mei_pend = mip_w[11] & mie_q[11];
     wire msi_pend = mip_w[3]  & mie_q[3];
     wire mti_pend = mip_w[7]  & mie_q[7];
-    assign irq_en = (mei_pend | msi_pend | mti_pend) & mstatus_q[3];
-    assign irq_cause = mei_pend ? 32'h8000_000B :
-                       msi_pend ? 32'h8000_0003 :
-                                  32'h8000_0007;
+    assign irq_o.valid = (mei_pend | msi_pend | mti_pend) & mstatus_q[3];
+    assign irq_o.code = mei_pend ? 4'd11 :
+                        msi_pend ? 4'd3 :
+                                   4'd7;
 
     // reads
     logic addr_valid;
@@ -115,13 +114,13 @@ module csr (
     always_comb begin
         unique case (csr_op)
             CSR_RW:  csr_new = csr_wdata;
-            CSR_RS:  csr_new = csr_rdata |  csr_wdata;
+            CSR_RS:  csr_new = csr_rdata | csr_wdata;
             CSR_RC:  csr_new = csr_rdata & ~csr_wdata;
             default: csr_new = csr_rdata;
         endcase
     end
 
-    // commit + illegal detect. rs/rc with zero source aren't real writes and don't trip illegal
+    // commit + illegal detect
     wire write_ok = csr_en & csr_wmask & addr_valid & ~addr_ro;
     assign csr_illegal = csr_en & (~addr_valid | (csr_wmask & addr_ro));
 

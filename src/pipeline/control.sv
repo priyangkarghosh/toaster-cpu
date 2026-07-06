@@ -150,8 +150,8 @@ module control (
                 csr_en = (funct3 != 3'b000) && (funct3 != 3'b100); // funct3 100 is reserved
                 mret_en = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h302);
 
-                // priv space: only ecall/ebreak/mret decode, everything else is illegal
-                exc.valid = (funct3 == 3'b100) || ((funct3 == 3'b000) && !mret_en);
+                // priv space: mret executes, wfi (0x105) is a nop, ecall/ebreak trap, the rest are illegal
+                exc.valid = (funct3 == 3'b100) || ((funct3 == 3'b000) && !mret_en && (imm_iu[11:0] != 12'h105));
                 exc.cause = (funct3 != 3'b000)        ? EXC_ILLEGAL :
                             (imm_iu[11:0] == 12'h000) ? EXC_ECALL_M :
                             (imm_iu[11:0] == 12'h001) ? EXC_EBREAK  : EXC_ILLEGAL;

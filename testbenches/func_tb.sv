@@ -1572,31 +1572,29 @@ module func_tb;
     endtask
 
     // ----------------------------------------------------------------
-    // SYSTEM decode holes: WFI (funct3=000, imm=0x105) and the reserved
-    // funct3=100 space must both trap illegal, not fall through as
-    // phantom rf/csr writes. First trap's cause/tval are copied to
-    // r14/r15 before the second trap overwrites r11/r12.
+    // SYSTEM space: WFI executes as a nop — r14 samples the handler
+    // marker right after it, so a trap would show up as 0x7AA. The
+    // reserved funct3=100 space still traps illegal with no phantom
+    // rf/csr writes.
     // ----------------------------------------------------------------
     task automatic test_system_illegal();
-        start_test("SYSTEM holes (WFI, funct3=100)");
+        start_test("SYSTEM space (WFI nop, funct3=100)");
         pipeline_reset();
 
         emit(i_addi (5'd1, 5'd0, 12'h200));                    // pc=0   r1 = mtvec base
         emit(i_csrrw(5'd0, 5'd1, A_MTVEC));                    // pc=4   mtvec = 0x200
         emit(i_addi (5'd2, 5'd0, 12'h5A5));                    // pc=8   r2 preload (phantom rd write must not land)
-        emit(enc_i(7'b1110011, 5'd0, 5'd0, 3'b000, 12'h105));  // pc=12  WFI -> TRAP
-        emit(i_addi (5'd14, 5'd11, 12'd0));                    // pc=16  r14 = first cause
-        emit(i_addi (5'd15, 5'd12, 12'd0));                    // pc=20  r15 = first mtval
-        emit(enc_i(7'b1110011, 5'd2, 5'd1, 3'b100, 12'h000));  // pc=24  funct3=100 rd=r2 -> TRAP
-        emit(i_jal  (5'd0, 21'h2E4));                          // pc=28  jal to 0x300
+        emit(enc_i(7'b1110011, 5'd0, 5'd0, 3'b000, 12'h105));  // pc=12  WFI -> nop
+        emit(i_addi (5'd14, 5'd10, 12'd0));                    // pc=16  r14 = handler marker (0 if wfi didn't trap)
+        emit(enc_i(7'b1110011, 5'd2, 5'd1, 3'b100, 12'h000));  // pc=20  funct3=100 rd=r2 -> TRAP
+        emit(i_jal  (5'd0, 21'h2E8));                          // pc=24  jal to 0x300
 
         while (iptr < 32'h80) emit(i_nop());
         emit_exc_handler();
         while (iptr < 32'hC0) emit(i_nop());
 
         wait_done();
-        check("wfi cause = 2",      5'd14, 32'd2);
-        check("wfi mtval = insn",   5'd15, 32'h10500073);
+        check("wfi didn't trap",    5'd14, 32'd0);
         check("f3=100 cause = 2",   5'd11, 32'd2);
         check("f3=100 mtval",       5'd12, 32'h0000C173);
         check("phantom rd blocked", 5'd2,  32'h5A5);

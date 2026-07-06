@@ -22,8 +22,7 @@ logic [31:0] trap_pc, trap_cause, trap_tval;
 logic        mret_en;
 
 logic [31:0] mstatus_o, mtvec_o, mepc_o, mie_o, mip_o;
-logic        irq_en;
-logic [31:0] irq_cause;
+irq_t        irq;
 
 logic passed;
 
@@ -54,8 +53,7 @@ csr dut (
     .mepc_o     (mepc_o),
     .mie_o      (mie_o),
     .mip_o      (mip_o),
-    .irq_en     (irq_en),
-    .irq_cause  (irq_cause)
+    .irq_o      (irq)
 );
 
 always #(PERIOD / 2) clk = ~clk;
@@ -124,17 +122,17 @@ task automatic check_rdata(input logic [31:0] expected, input string name);
     end
 endtask
 
-// sample combinational irq outputs after irq lines / mie / mstatus stabilize
-task automatic check_irq(input logic exp_take, input logic [31:0] exp_cause, input string name);
+// sample the combinational irq claim after irq lines / mie / mstatus stabilize
+task automatic check_irq(input logic exp_take, input logic [3:0] exp_code, input string name);
     @(negedge clk);
-    if (irq_en !== exp_take) begin
+    if (irq.valid !== exp_take) begin
         passed = 1'b0;
-        $display("FAIL [%s] irq_en=%b exp=%b", name, irq_en, exp_take);
-    end else if (exp_take && irq_cause !== exp_cause) begin
+        $display("FAIL [%s] irq.valid=%b exp=%b", name, irq.valid, exp_take);
+    end else if (exp_take && irq.code !== exp_code) begin
         passed = 1'b0;
-        $display("FAIL [%s] cause=%h exp=%h", name, irq_cause, exp_cause);
+        $display("FAIL [%s] code=%0d exp=%0d", name, irq.code, exp_code);
     end else begin
-        $display("PASS [%s] irq_en=%b cause=%h", name, irq_en, irq_cause);
+        $display("PASS [%s] irq.valid=%b code=%0d", name, irq.valid, irq.code);
     end
 endtask
 
@@ -369,24 +367,24 @@ initial begin
     do_csr(CSR_RW, A_MSTATUS, 32'h0000_0000, 1'b1);   // clear MIE
     do_csr(CSR_RW, A_MIE,     32'h0000_0888, 1'b1);   // enable all 3
     irq_msi = 1; irq_mti = 1; irq_mei = 1;
-    check_irq(1'b0, 32'd0, "MIE=0 masks all");
+    check_irq(1'b0, 4'd0, "MIE=0 masks all");
 
     do_csr(CSR_RW, A_MSTATUS, 32'h0000_0008, 1'b1);   // MIE=1
-    check_irq(1'b1, 32'h8000_000B, "all pending: mei wins");
+    check_irq(1'b1, 4'd11, "all pending: mei wins");
 
     irq_mei = 0;
-    check_irq(1'b1, 32'h8000_0003, "mti+msi pending: msi wins");
+    check_irq(1'b1, 4'd3, "mti+msi pending: msi wins");
 
     irq_msi = 0;
-    check_irq(1'b1, 32'h8000_0007, "only mti pending");
+    check_irq(1'b1, 4'd7, "only mti pending");
 
     irq_mti = 0;
-    check_irq(1'b0, 32'd0, "no sources -> idle");
+    check_irq(1'b0, 4'd0, "no sources -> idle");
 
     // mie bit-level masking
     do_csr(CSR_RW, A_MIE, 32'h0000_0080, 1'b1);       // only MTIE
     irq_mti = 1; irq_mei = 1;
-    check_irq(1'b1, 32'h8000_0007, "mei pending but MEIE=0 -> mti");
+    check_irq(1'b1, 4'd7, "mei pending but MEIE=0 -> mti");
     irq_mti = 0; irq_mei = 0;
 
     // restore MIE/mstatus to known

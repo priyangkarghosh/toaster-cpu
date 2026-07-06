@@ -117,10 +117,15 @@ package riscv_pkg;
         logic [31:0] pc, cause, tval;
     } trap_t;
 
+    // interrupt claim
+    typedef struct packed {
+        logic valid;
+        logic [3:0] code;
+    } irq_t;
+
     // csr -> core live status
     typedef struct packed {
-        logic irq_en;
-        logic [31:0] irq_cause;
+        irq_t irq;
         logic [31:0] mtvec, mepc;
     } csr_stat_t;
 

@@ -58,18 +58,18 @@ module tx_mem (
 
     // commit trap
     wire replay_safe = ~(ex_ma.load_en | ex_ma.store_en | ex_ma.csr_en | ex_ma.mret_en);
-    wire irq_taken = csr_stat.irq_en & ex_ma.valid & replay_safe;
+    wire irq_taken = csr_stat.irq.valid & ex_ma.valid & replay_safe;
 
     // csr trap port
     assign trap.en = ma_exc.valid | irq_taken;
     assign trap.pc = ex_ma.pc;
-    assign trap.cause = ma_exc.valid ? {28'd0, ma_exc.cause} : csr_stat.irq_cause;
+    assign trap.cause = ma_exc.valid ? {28'd0, ma_exc.cause} : {1'b1, 27'd0, csr_stat.irq.code};
     assign trap.tval = ma_exc.valid ? ma_exc.tval : 32'd0;
 
     // vectored mtvec offsets interrupts only; exceptions always go to base
     wire [31:0] mtvec_base = {csr_stat.mtvec[31:2], 2'b00};
     wire irq_vec = ~ma_exc.valid & csr_stat.mtvec[0];
-    assign pc_target = irq_vec ? mtvec_base + {26'd0, csr_stat.irq_cause[3:0], 2'b00} : mtvec_base;
+    assign pc_target = irq_vec ? mtvec_base + {26'd0, csr_stat.irq.code, 2'b00} : mtvec_base;
 
     // set response data. a faulting load/store must never touch the bus
     assign o_req.valid = (ex_ma.load_en | ex_ma.store_en) & ~ex_ma.exc.valid;

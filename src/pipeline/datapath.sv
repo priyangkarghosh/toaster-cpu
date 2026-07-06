@@ -109,8 +109,7 @@ module datapath (
         .mepc_o(csr_stat.mepc),
         .mie_o(),
         .mip_o(),
-        .irq_en(csr_stat.irq_en),
-        .irq_cause(csr_stat.irq_cause)
+        .irq_o(csr_stat.irq)
     );
 
     // forwarding
