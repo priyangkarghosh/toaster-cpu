@@ -14,13 +14,13 @@ module toaster_cpu #(
     // tbus originator
     req_t [0:0] o_req;
     rsp_t [0:0] o_rsp;
-    req_t [0:0] c_req;
-    rsp_t [0:0] c_rsp;
+    req_t [1:0] c_req;
+    rsp_t [1:0] c_rsp;
 
     tbus #(
         .N_ORIGINATORS(1),
-        .N_COMPLETERS(1),
-        .MAP('{MEM})
+        .N_COMPLETERS(2),
+        .MAP('{MEM, IOHUB})
     ) u_tbus (
         .clk(clk),
         .reset(reset),
@@ -42,7 +42,17 @@ module toaster_cpu #(
         .c_rsp(c_rsp[0])
     );
 
-    // irqs tied off until clint + iohub are wired in
+    // io hub
+    logic irq_msi, irq_mti;
+    iohub u_iohub (
+        .clk(clk),
+        .reset(reset),
+        .c_req(c_req[1]),
+        .c_rsp(c_rsp[1]),
+        .irq_msi(irq_msi),
+        .irq_mti(irq_mti)
+    );
+
     datapath u_core (
         .clk(clk),
         .reset(reset),
@@ -50,8 +60,8 @@ module toaster_cpu #(
         .i_data(i_data),
         .o_req(o_req[0]),
         .o_rsp(o_rsp[0]),
-        .irq_msi(1'b0),
-        .irq_mti(1'b0),
+        .irq_msi(irq_msi),
+        .irq_mti(irq_mti),
         .irq_mei(1'b0)
     );
 endmodule

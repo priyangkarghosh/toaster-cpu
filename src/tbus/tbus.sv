@@ -11,7 +11,6 @@ module tbus #(
     //   .MAP('{MEM, IOHUB})
     parameter region_t MAP[N_COMPLETERS] = '{default: '0}
 ) (
-    // unused until arbiter goes stateful (round-robin etc)
     input logic clk,
     input logic reset,
 
@@ -56,11 +55,10 @@ module tbus #(
 
     // dummy completer: acks unmapped requests so they err instead of hanging.
     // ack doubles as the fsm state, same shape as memory
-    logic dummy_ack, dummy_valid;
-    assign dummy_valid = cur.valid & ~|c_rcv;
+    logic dummy_ack;
     always_ff @(posedge clk) begin
         if (reset | dummy_ack) dummy_ack <= 0;
-        else if (dummy_valid) dummy_ack <= 1;
+        else if (cur.valid & ~|c_rcv) dummy_ack <= 1;
     end
 
     // collapse completer responses
@@ -68,12 +66,9 @@ module tbus #(
     always_comb begin
         cur_rsp = '0;
         cur_rsp.ack = dummy_ack;
-        cur_rsp.err = '1;
+        cur_rsp.err = dummy_ack;
         for (int i = 0; i < N_COMPLETERS; i++) begin
-            if (c_rsp[i].ack) begin
-                cur_rsp = c_rsp[i];
-                cur_rsp.err = c_rsp[i].err;
-            end
+            if (c_rsp[i].ack) cur_rsp = c_rsp[i];
         end
     end
 
