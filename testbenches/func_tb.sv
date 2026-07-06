@@ -1525,6 +1525,181 @@ module func_tb;
     endtask
 
     // ----------------------------------------------------------------
+    // shared exception handler body — captures cause/tval/epc then
+    // resumes past the faulting instruction.
+    //   r10 <- 0x7AA   handler ran
+    //   r11 <- mcause
+    //   r12 <- mtval
+    //   r13 <- mepc, bumped by 4 so mret skips the trapping insn
+    // ----------------------------------------------------------------
+    task automatic emit_exc_handler();
+        emit(i_addi (5'd10, 5'd0, 12'h7AA));
+        emit(i_csrrs(5'd11, 5'd0, A_MCAUSE));
+        emit(i_csrrs(5'd12, 5'd0, A_MTVAL));
+        emit(i_csrrs(5'd13, 5'd0, A_MEPC));
+        emit(i_addi (5'd13, 5'd13, 12'd4));
+        emit(i_csrrw(5'd0, 5'd13, A_MEPC));
+        emit(i_mret());
+    endtask
+
+    // ----------------------------------------------------------------
+    // a word that matches no decoded opcode traps with cause=2 and the
+    // raw instruction bits in mtval.
+    // ----------------------------------------------------------------
+    task automatic test_illegal_opcode();
+        start_test("Illegal opcode (cause = 2)");
+        pipeline_reset();
+
+        emit(i_addi (5'd1, 5'd0, 12'h200));            // pc=0   r1 = mtvec base
+        emit(i_csrrw(5'd0, 5'd1, A_MTVEC));            // pc=4   mtvec = 0x200
+        emit(32'hFFFF_FFFF);                           // pc=8   TRAP -> undecodable word
+        emit(i_addi (5'd5, 5'd0, 12'd99));             // pc=12  runs after mret
+        emit(i_jal  (5'd0, 21'h2F0));                  // pc=16  jal to 0x300
+
+        while (iptr < 32'h80) emit(i_nop());           // pad to handler at pc=0x200
+        emit_exc_handler();
+        while (iptr < 32'hC0) emit(i_nop());           // pad to sentinel zone at pc=0x300
+
+        wait_done();
+        check("illegal cause = 2",  5'd11, 32'd2);
+        check("mtval = insn",       5'd12, 32'hFFFF_FFFF);
+        check("post-mret r5",       5'd5,  32'd99);
+        end_test();
+    endtask
+
+    // ----------------------------------------------------------------
+    // SYSTEM decode holes: WFI (funct3=000, imm=0x105) and the reserved
+    // funct3=100 space must both trap illegal, not fall through as
+    // phantom rf/csr writes. First trap's cause/tval are copied to
+    // r14/r15 before the second trap overwrites r11/r12.
+    // ----------------------------------------------------------------
+    task automatic test_system_illegal();
+        start_test("SYSTEM holes (WFI, funct3=100)");
+        pipeline_reset();
+
+        emit(i_addi (5'd1, 5'd0, 12'h200));                    // pc=0   r1 = mtvec base
+        emit(i_csrrw(5'd0, 5'd1, A_MTVEC));                    // pc=4   mtvec = 0x200
+        emit(i_addi (5'd2, 5'd0, 12'h5A5));                    // pc=8   r2 preload (phantom rd write must not land)
+        emit(enc_i(7'b1110011, 5'd0, 5'd0, 3'b000, 12'h105));  // pc=12  WFI -> TRAP
+        emit(i_addi (5'd14, 5'd11, 12'd0));                    // pc=16  r14 = first cause
+        emit(i_addi (5'd15, 5'd12, 12'd0));                    // pc=20  r15 = first mtval
+        emit(enc_i(7'b1110011, 5'd2, 5'd1, 3'b100, 12'h000));  // pc=24  funct3=100 rd=r2 -> TRAP
+        emit(i_jal  (5'd0, 21'h2E4));                          // pc=28  jal to 0x300
+
+        while (iptr < 32'h80) emit(i_nop());
+        emit_exc_handler();
+        while (iptr < 32'hC0) emit(i_nop());
+
+        wait_done();
+        check("wfi cause = 2",      5'd14, 32'd2);
+        check("wfi mtval = insn",   5'd15, 32'h10500073);
+        check("f3=100 cause = 2",   5'd11, 32'd2);
+        check("f3=100 mtval",       5'd12, 32'h0000C173);
+        check("phantom rd blocked", 5'd2,  32'h5A5);
+        end_test();
+    endtask
+
+    // ----------------------------------------------------------------
+    // fetch misaligned (cause = 0): jalr to a 2-mod-4 target (bit 0 of
+    // rs1+imm is cleared first, so 0x203 faults as 0x202) and a taken
+    // branch to pc+6. mtval = the misaligned target.
+    // ----------------------------------------------------------------
+    task automatic test_fetch_misaligned();
+        start_test("Fetch misaligned (cause = 0)");
+        pipeline_reset();
+
+        emit(i_addi (5'd1, 5'd0, 12'h200));            // pc=0   r1 = mtvec base
+        emit(i_csrrw(5'd0, 5'd1, A_MTVEC));            // pc=4   mtvec = 0x200
+        emit(i_addi (5'd2, 5'd0, 12'h203));            // pc=8   r2 = 0x203
+        emit(i_jalr (5'd0, 5'd2, 12'd0));              // pc=12  TRAP -> target 0x202
+        emit(i_addi (5'd14, 5'd11, 12'd0));            // pc=16  r14 = first cause
+        emit(i_addi (5'd15, 5'd12, 12'd0));            // pc=20  r15 = first mtval
+        emit(i_beq  (5'd0, 5'd0, 13'd6));              // pc=24  TRAP -> taken, target 30
+        emit(i_addi (5'd5, 5'd0, 12'd99));             // pc=28  runs after mret
+        emit(i_jal  (5'd0, 21'h2E0));                  // pc=32  jal to 0x300
+
+        while (iptr < 32'h80) emit(i_nop());
+        emit_exc_handler();
+        while (iptr < 32'hC0) emit(i_nop());
+
+        wait_done();
+        check("handler ran",        5'd10, 32'h7AA);
+        check("jalr cause = 0",     5'd14, 32'd0);
+        check("jalr mtval = 0x202", 5'd15, 32'h202);
+        check("branch cause = 0",   5'd11, 32'd0);
+        check("branch mtval = 30",  5'd12, 32'd30);
+        check("post-mret r5",       5'd5,  32'd99);
+        end_test();
+    endtask
+
+    // ----------------------------------------------------------------
+    // load misaligned (cause = 4): lw at 0x102 and lh at 0x103. mtval =
+    // the effective address; the faulting load's rd write must not land.
+    // trailing lb at 0x107 is legal and must NOT trap (r12 would move).
+    // ----------------------------------------------------------------
+    task automatic test_load_misaligned();
+        start_test("Load misaligned (cause = 4)");
+        pipeline_reset();
+
+        emit(i_addi (5'd1, 5'd0, 12'h200));            // pc=0   r1 = mtvec base
+        emit(i_csrrw(5'd0, 5'd1, A_MTVEC));            // pc=4   mtvec = 0x200
+        emit(i_addi (5'd2, 5'd0, 12'h5A5));            // pc=8   r2 preload (rd write must not land)
+        emit(i_addi (5'd3, 5'd0, 12'h102));            // pc=12  r3 = 0x102
+        emit(i_lw   (5'd2, 5'd3, 12'd0));              // pc=16  TRAP -> lw @ 0x102
+        emit(i_addi (5'd14, 5'd11, 12'd0));            // pc=20  r14 = first cause
+        emit(i_addi (5'd15, 5'd12, 12'd0));            // pc=24  r15 = first mtval
+        emit(i_lh   (5'd4, 5'd3, 12'd1));              // pc=28  TRAP -> lh @ 0x103
+        emit(i_lb   (5'd6, 5'd3, 12'd5));              // pc=32  lb @ 0x107 legal, no trap
+        emit(i_jal  (5'd0, 21'h2DC));                  // pc=36  jal to 0x300
+
+        while (iptr < 32'h80) emit(i_nop());
+        emit_exc_handler();
+        while (iptr < 32'hC0) emit(i_nop());
+
+        wait_done();
+        check("lw cause = 4",       5'd14, 32'd4);
+        check("lw mtval = 0x102",   5'd15, 32'h102);
+        check("lh cause = 4",       5'd11, 32'd4);
+        check("lh mtval = 0x103",   5'd12, 32'h103);
+        check("faulting rd blocked",5'd2,  32'h5A5);
+        end_test();
+    endtask
+
+    // ----------------------------------------------------------------
+    // store misaligned (cause = 6): sw at 0x102 and sh at 0x101, both
+    // suppressed before the bus. trailing legal sb at 0x103 is the only
+    // write that lands, so mem[0x100] proves no partial lanes leaked.
+    // ----------------------------------------------------------------
+    task automatic test_store_misaligned();
+        start_test("Store misaligned (cause = 6)");
+        pipeline_reset();
+
+        emit(i_addi (5'd1, 5'd0, 12'h200));            // pc=0   r1 = mtvec base
+        emit(i_csrrw(5'd0, 5'd1, A_MTVEC));            // pc=4   mtvec = 0x200
+        emit(i_addi (5'd2, 5'd0, 12'h5A5));            // pc=8   r2 = store value (low byte 0xA5)
+        emit(i_addi (5'd3, 5'd0, 12'h100));            // pc=12  r3 = 0x100
+        emit(i_sw   (5'd3, 5'd2, 12'd2));              // pc=16  TRAP -> sw @ 0x102
+        emit(i_addi (5'd14, 5'd11, 12'd0));            // pc=20  r14 = first cause
+        emit(i_addi (5'd15, 5'd12, 12'd0));            // pc=24  r15 = first mtval
+        emit(i_sh   (5'd3, 5'd2, 12'd1));              // pc=28  TRAP -> sh @ 0x101
+        emit(i_sb   (5'd3, 5'd2, 12'd3));              // pc=32  sb @ 0x103 legal, byte3 = 0xA5
+        emit(i_jal  (5'd0, 21'h2DC));                  // pc=36  jal to 0x300
+
+        while (iptr < 32'h80) emit(i_nop());
+        emit_exc_handler();
+        while (iptr < 32'hC0) emit(i_nop());
+
+        wait_done();
+        check("sw cause = 6",       5'd14, 32'd6);
+        check("sw mtval = 0x102",   5'd15, 32'h102);
+        check("sh cause = 6",       5'd11, 32'd6);
+        check("sh mtval = 0x101",   5'd12, 32'h101);
+        check_mem("only sb landed",   32'h100, 32'hA5000000);
+        check_mem("no spill to +4",   32'h104, 32'h0);
+        end_test();
+    endtask
+
+    // ----------------------------------------------------------------
     // shared MTI handler body — placed at the iptr matching mtvec_base
     // (direct mode) or mtvec_base + 4*cause (vectored mode).
     //   r10 <- 0x7AA       handler ran
@@ -1719,6 +1894,13 @@ module func_tb;
         test_csr_tval();
         test_ecall();
         test_ebreak();
+
+        // exception coverage: decode holes + misaligned access
+        test_illegal_opcode();
+        test_system_illegal();
+        test_fetch_misaligned();
+        test_load_misaligned();
+        test_store_misaligned();
 
         // interrupts
         test_irq_direct();

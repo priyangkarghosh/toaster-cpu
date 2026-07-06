@@ -147,10 +147,14 @@ module control (
                 imm = imm_iu;
                 use_imm = funct3[2];
                 rf_en = 1;
-                csr_en = (funct3 != 3'b000);
+                csr_en = (funct3 != 3'b000) && (funct3 != 3'b100); // funct3 100 is reserved
                 mret_en = (funct3 == 3'b000) && (imm_iu[11:0] == 12'h302);
-                exc.valid = (funct3 == 3'b000) && ((imm_iu[11:0] == 12'h000) || (imm_iu[11:0] == 12'h001));
-                exc.cause = (imm_iu[11:0] == 12'h001) ? EXC_EBREAK : EXC_ECALL_M;
+
+                // priv space: only ecall/ebreak/mret decode, everything else is illegal
+                exc.valid = (funct3 == 3'b100) || ((funct3 == 3'b000) && !mret_en);
+                exc.cause = (funct3 != 3'b000)        ? EXC_ILLEGAL :
+                            (imm_iu[11:0] == 12'h000) ? EXC_ECALL_M :
+                            (imm_iu[11:0] == 12'h001) ? EXC_EBREAK  : EXC_ILLEGAL;
             end
 
             default: begin

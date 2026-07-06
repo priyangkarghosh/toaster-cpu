@@ -66,6 +66,10 @@ module tx_exec (
         .cond_ff(cond_ff)
     );
 
+    // mret has priority over a branch
+    assign pc_en = (id_ex.jal_en | (id_ex.branch_en & cond_ff) | id_ex.mret_en) & ex_commit;
+    assign pc_target = id_ex.mret_en ? csr_stat.mepc : {alu_out[31:1], 1'b0};
+
     // csr op port
     assign csr_req.en = id_ex.csr_en & ex_commit;
     assign csr_req.op = id_ex.csr_op;
@@ -74,15 +78,24 @@ module tx_exec (
     assign csr_req.wmask = (id_ex.csr_op == CSR_RW) || (id_ex.rs1 != 5'd0);
     assign csr_req.mret = id_ex.mret_en & ex_commit;
 
-    // update the exception port to reflect current inst
-    exc_t ex_exc;
-    assign ex_exc.valid = id_ex.exc.valid | csr_rsp.illegal;
-    assign ex_exc.cause = id_ex.exc.valid ? id_ex.exc.cause : EXC_ILLEGAL;
-    assign ex_exc.tval = (ex_exc.cause == EXC_ILLEGAL) ? id_ex.ir : '0;
+    // check misalignment. word needs addr[1:0] == 0, half needs addr[0] == 0, byte never misaligns
+    wire is_word = (id_ex.mem_width == MW_WORD);
+    wire is_half = (id_ex.mem_width == MW_HALF) | (id_ex.mem_width == MW_HALFU);
+    wire pc_misaligned = pc_en && pc_target[1:0] != 0; // ensure target address is aligned
+    wire addr_misaligned = (id_ex.load_en | id_ex.store_en) & (is_word ? alu_out[1:0] != 0 : is_half & alu_out[0]);
 
-    // mret has priority over a branch branch
-    assign pc_en = (id_ex.jal_en | (id_ex.branch_en & cond_ff) | id_ex.mret_en) & ex_commit;
-    assign pc_target = id_ex.mret_en ? csr_stat.mepc : {alu_out[31:1], 1'b0};
+    // update exception data
+    exc_t ex_exc;
+    assign ex_exc.valid = id_ex.exc.valid | csr_rsp.illegal | pc_misaligned | addr_misaligned;
+    assign ex_exc.cause = id_ex.exc.valid ? id_ex.exc.cause :
+                          pc_misaligned ? EXC_IADDR_MISALIGNED :
+                          addr_misaligned ? (id_ex.store_en ? EXC_SADDR_MISALIGNED : EXC_LADDR_MISALIGNED) :
+                          EXC_ILLEGAL;
+    assign ex_exc.tval  = (ex_exc.cause == EXC_ILLEGAL) ? id_ex.ir :
+                          (ex_exc.cause == EXC_IADDR_MISALIGNED) ? pc_target :
+                          (ex_exc.cause == EXC_SADDR_MISALIGNED) ? alu_out :
+                          (ex_exc.cause == EXC_LADDR_MISALIGNED) ? alu_out :
+                          '0;
 
     // stage result
     wire [31:0] exec = id_ex.jal_en ? id_ex.pc + 32'd4 :

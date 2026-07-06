@@ -24,16 +24,13 @@ module tx_mem (
     // outputs to next stage
     output ma_wb_t ma_wb
 );
-    wire [1:0] boff = ex_ma.data[1:0];
-
     // lane placement is a shift by 8*boff
     wire is_word = (ex_ma.mem_width == MW_WORD);
     wire is_half = (ex_ma.mem_width == MW_HALF) | (ex_ma.mem_width == MW_HALFU);
-    wire misaligned = is_word ? (boff != 2'd0) : (is_half & boff[0]); // no lanes until misaligned exc lands
 
-    // calculate byte enable
-    wire [3:0] base_be = is_word ? 4'b1111 : is_half ? 4'b0011 : 4'b0001;
-    wire [3:0] be = misaligned ? 4'd0 : base_be << boff;
+    // calculate byte enable. misaligned accesses trap in ex, so the request never issues here
+    wire [1:0] boff = ex_ma.data[1:0];
+    wire [3:0] be = (is_word ? 4'b1111 : is_half ? 4'b0011 : 4'b0001) << boff;
     wire [31:0] wdata = ex_ma.rr2 << {boff, 3'b000};
 
     // extract lane by shifting down, sign/zero-ext per mem_width
