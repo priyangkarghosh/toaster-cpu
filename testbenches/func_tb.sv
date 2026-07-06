@@ -66,6 +66,9 @@ module func_tb;
     wire [11:0] d_widx = o_req.addr[13:2];
     int wait_q;
 
+    // model the bus's dummy completer: unmapped addresses ack with err
+    wire addr_mapped = (o_req.addr < DMEM_WORDS*4) || (o_req.addr == IRQ_CLR_ADDR);
+
     always_ff @(posedge clk) begin
         if (reset) begin
             o_rsp  <= '0;
@@ -77,8 +80,9 @@ module func_tb;
         end else if (o_req.valid) begin
             if (wait_q == 0) begin
                 o_rsp.ack   <= 1'b1;
+                o_rsp.err   <= ~addr_mapped;
                 o_rsp.rdata <= dmem[d_widx];
-                if (o_req.write) begin
+                if (o_req.write & addr_mapped) begin
                     if (o_req.addr == IRQ_CLR_ADDR) begin
                         irq_msi <= 1'b0;
                         irq_mti <= 1'b0;
@@ -1700,6 +1704,38 @@ module func_tb;
     endtask
 
     // ----------------------------------------------------------------
+    // access fault (cause = 5 load / 7 store): lw/sw to an address the
+    // bus model acks with err. mtval = the faulting address; the
+    // faulting load's rd write and the store's side effect must not land.
+    // ----------------------------------------------------------------
+    task automatic test_access_fault();
+        start_test("Access fault (cause = 5/7)");
+        pipeline_reset();
+
+        emit(i_addi (5'd1, 5'd0, 12'h200));            // pc=0   r1 = mtvec base
+        emit(i_csrrw(5'd0, 5'd1, A_MTVEC));            // pc=4   mtvec = 0x200
+        emit(i_addi (5'd2, 5'd0, 12'h5A5));            // pc=8   r2 preload (rd write must not land)
+        emit(i_lui  (5'd3, 20'h00010));                // pc=12  r3 = 0x10000, beyond dmem
+        emit(i_lw   (5'd2, 5'd3, 12'd0));              // pc=16  TRAP -> load access fault
+        emit(i_addi (5'd14, 5'd11, 12'd0));            // pc=20  r14 = first cause
+        emit(i_addi (5'd15, 5'd12, 12'd0));            // pc=24  r15 = first mtval
+        emit(i_sw   (5'd3, 5'd2, 12'd0));              // pc=28  TRAP -> store access fault
+        emit(i_jal  (5'd0, 21'h2E0));                  // pc=32  jal to 0x300
+
+        while (iptr < 32'h80) emit(i_nop());
+        emit_exc_handler();
+        while (iptr < 32'hC0) emit(i_nop());
+
+        wait_done();
+        check("load fault cause = 5",  5'd14, 32'd5);
+        check("load fault mtval",      5'd15, 32'h10000);
+        check("store fault cause = 7", 5'd11, 32'd7);
+        check("store fault mtval",     5'd12, 32'h10000);
+        check("faulting rd blocked",   5'd2,  32'h5A5);
+        end_test();
+    endtask
+
+    // ----------------------------------------------------------------
     // shared MTI handler body — placed at the iptr matching mtvec_base
     // (direct mode) or mtvec_base + 4*cause (vectored mode).
     //   r10 <- 0x7AA       handler ran
@@ -1901,6 +1937,7 @@ module func_tb;
         test_fetch_misaligned();
         test_load_misaligned();
         test_store_misaligned();
+        test_access_fault();
 
         // interrupts
         test_irq_direct();

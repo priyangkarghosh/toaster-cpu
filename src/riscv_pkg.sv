@@ -76,7 +76,9 @@ package riscv_pkg;
         EXC_ILLEGAL          = 4'd2,
         EXC_EBREAK           = 4'd3,
         EXC_LADDR_MISALIGNED = 4'd4,
+        EXC_LACCESS          = 4'd5,
         EXC_SADDR_MISALIGNED = 4'd6,
+        EXC_SACCESS          = 4'd7,
         EXC_ECALL_M          = 4'd11
     } exc_cause_t;
 

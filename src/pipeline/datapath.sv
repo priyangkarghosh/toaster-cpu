@@ -39,7 +39,7 @@ module datapath (
     wire [31:0] pc_target = trap.en ? ma_pc_target : ex_pc_target;
 
     // hazard wiring
-    wire load_use = ex_ma.load_en & (id_ex.rs1 == ex_ma.rd || id_ex.rs2 == ex_ma.rd);
+    wire load_use = ex_ma.load_en & (ex_ma.rd != '0) & (id_ex.rs1 == ex_ma.rd || id_ex.rs2 == ex_ma.rd);
     wire flush = pc_en; // any redirect kills the wrong-path front end
 
     // stalls
@@ -190,4 +190,11 @@ module datapath (
         .rf_data(rf_in),
         .rf_en(rf_en)
     );
+
+    // DEBUG
+    // synthesis translate_off
+    always_ff @(posedge clk) if (!reset) begin
+        assert (!(trap.en & ma_busy)) else $error("trap committed while ma bus op in flight");
+    end
+    // synthesis translate_on
 endmodule

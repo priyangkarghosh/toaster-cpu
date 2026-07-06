@@ -44,35 +44,46 @@ module tbus #(
 
     // completer-side routing
     // -> each completer gets the full request, but only the addressed completer sees valid=1
-    genvar gi;
-    generate
-        for (gi = 0; gi < N_COMPLETERS; gi++) begin : gen_route
-            logic sel;
-            assign sel = (cur.addr & MAP[gi].mask) == MAP[gi].base;
-            always_comb begin
-                c_req[gi] = cur;
-                c_req[gi].valid = cur.valid & sel;
-            end
+    logic [N_COMPLETERS-1:0] c_rcv; // vec of which completers actually receive the request
+    for (genvar gi = 0; gi < N_COMPLETERS; gi++) begin : gen_route
+        wire sel = (cur.addr & MAP[gi].mask) == MAP[gi].base;
+        always_comb begin
+            c_req[gi] = cur;
+            c_req[gi].valid = cur.valid & sel;
+            c_rcv[gi] = c_req[gi].valid;
         end
-    endgenerate
+    end
+
+    // dummy completer: acks unmapped requests so they err instead of hanging.
+    // ack doubles as the fsm state, same shape as memory
+    logic dummy_ack, dummy_valid;
+    assign dummy_valid = cur.valid & ~|c_rcv;
+    always_ff @(posedge clk) begin
+        if (reset | dummy_ack) dummy_ack <= 0;
+        else if (dummy_valid) dummy_ack <= 1;
+    end
 
     // collapse completer responses
     rsp_t cur_rsp;
     always_comb begin
         cur_rsp = '0;
+        cur_rsp.ack = dummy_ack;
+        cur_rsp.err = '1;
         for (int i = 0; i < N_COMPLETERS; i++) begin
-            if (c_rsp[i].ack) cur_rsp = c_rsp[i];
+            if (c_rsp[i].ack) begin
+                cur_rsp = c_rsp[i];
+                cur_rsp.err = c_rsp[i].err;
+            end
         end
     end
 
     // return response only to the granted originator.
     // ungranted originators see ack=0, hold their req until they win arbitration
-    generate
-        for (gi = 0; gi < N_ORIGINATORS; gi++) begin : gen_resp
-            always_comb begin
-                o_rsp[gi] = cur_rsp;
-                o_rsp[gi].ack = grant[gi] & cur_rsp.ack;
-            end
+    for (genvar gi = 0; gi < N_ORIGINATORS; gi++) begin : gen_resp
+        always_comb begin
+            o_rsp[gi] = cur_rsp;
+            o_rsp[gi].ack = grant[gi] & cur_rsp.ack;
+            o_rsp[gi].err = grant[gi] & cur_rsp.err;
         end
-    endgenerate
+    end
 endmodule

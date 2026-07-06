@@ -123,4 +123,11 @@ module tx_exec (
             ex_ma.mret_en <= id_ex.mret_en;
         end
     end
+
+    // DEBUG
+    // synthesis translate_off
+    always_ff @(posedge clk) if (!reset) begin
+        assert (!(mdu_valid_out & ~en)) else $error("mdu result pulsed while ex stalled");
+    end
+    // synthesis translate_on
 endmodule

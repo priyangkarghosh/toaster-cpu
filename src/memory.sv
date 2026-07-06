@@ -27,9 +27,9 @@ module memory #(
 
     // ack doubles as the fsm state: 0 = idle, 1 = responding
     always_ff @(posedge clk) begin
-        if (reset | c_rsp.ack) c_rsp.ack <= 0;
+        if (reset | c_rsp.ack) c_rsp.ack <= '0;
         else if (c_req.valid) begin
-            c_rsp.ack <= 1;
+            c_rsp.ack <= '1;
             c_rsp.rdata <= mem[d_widx];
             if (c_req.write) begin
                 if (c_req.be[0]) mem[d_widx][7:0] <= c_req.wdata[7:0];
@@ -39,4 +39,7 @@ module memory #(
             end
         end
     end
+
+    // mem should never error
+    assign c_rsp.err = '0;
 endmodule

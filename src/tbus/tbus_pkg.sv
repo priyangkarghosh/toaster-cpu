@@ -10,7 +10,7 @@ package tbus_pkg;
 
     // completer -> originator
     typedef struct packed {
-        logic ack;
+        logic ack, err;
         logic [31:0] rdata;
     } rsp_t;
 endpackage

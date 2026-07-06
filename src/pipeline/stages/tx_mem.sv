@@ -47,20 +47,28 @@ module tx_mem (
         endcase
     end
 
-    // trap commit point. irqs squash + re-execute this instruction, so skip
-    // ops whose side effects already fired (bus access, csr write, mret)
+    // access fault
+    wire bus_err = o_req.valid & o_rsp.ack & o_rsp.err;
+
+    // update exception data
+    exc_t ma_exc;
+    assign ma_exc.valid = ex_ma.exc.valid | bus_err;
+    assign ma_exc.cause = ex_ma.exc.valid ? ex_ma.exc.cause : (ex_ma.store_en ? EXC_SACCESS : EXC_LACCESS);
+    assign ma_exc.tval = ex_ma.exc.valid ? ex_ma.exc.tval : ex_ma.data;
+
+    // commit trap
     wire replay_safe = ~(ex_ma.load_en | ex_ma.store_en | ex_ma.csr_en | ex_ma.mret_en);
     wire irq_taken = csr_stat.irq_en & ex_ma.valid & replay_safe;
 
     // csr trap port
-    assign trap.en = ex_ma.exc.valid | irq_taken;
+    assign trap.en = ma_exc.valid | irq_taken;
     assign trap.pc = ex_ma.pc;
-    assign trap.cause = ex_ma.exc.valid ? {28'd0, ex_ma.exc.cause} : csr_stat.irq_cause;
-    assign trap.tval = ex_ma.exc.valid ? ex_ma.exc.tval : 32'd0;
+    assign trap.cause = ma_exc.valid ? {28'd0, ma_exc.cause} : csr_stat.irq_cause;
+    assign trap.tval = ma_exc.valid ? ma_exc.tval : 32'd0;
 
     // vectored mtvec offsets interrupts only; exceptions always go to base
     wire [31:0] mtvec_base = {csr_stat.mtvec[31:2], 2'b00};
-    wire irq_vec = ~ex_ma.exc.valid & csr_stat.mtvec[0];
+    wire irq_vec = ~ma_exc.valid & csr_stat.mtvec[0];
     assign pc_target = irq_vec ? mtvec_base + {26'd0, csr_stat.irq_cause[3:0], 2'b00} : mtvec_base;
 
     // set response data. a faulting load/store must never touch the bus
