@@ -9,5 +9,4 @@ package tbus_map_pkg;
     // completers
     localparam region_t MEM   = '{base: 32'h0000_0000, mask: 32'hF000_0000};
     localparam region_t IOHUB = '{base: 32'h1000_0000, mask: 32'hF000_0000};
-    localparam region_t CLINT = '{base: 32'h2000_0000, mask: 32'hF000_0000};
 endpackage
