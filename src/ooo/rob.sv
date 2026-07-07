@@ -45,7 +45,6 @@ module rob # (
             if (alloc_en) begin
                 buffer[tail] <= alloc_entry;
                 buffer[tail].done <= 1'b0;
-                full <= (~retire_en & (head == tail)) | (retire_en & full);
                 tail <= tail + 1'b1;
             end
 
@@ -55,10 +54,10 @@ module rob # (
                 buffer[comp_idx].done <= 1'b1;
             end
 
-            if (retire_en) begin
-                head <= head + 1'b1;
-                full <= '0;
-            end
+            if (retire_en) head <= head + 1'b1;
+
+            // set occupancy
+            full <= (alloc_en == retire_en) ? full : (alloc_en & (tail + 1'b1 == head));
         end
     end
 
